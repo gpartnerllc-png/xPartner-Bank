@@ -1,0 +1,6 @@
+# Copie para .dev.vars e preencha com valores locais. NUNCA faça commit de .dev.vars.
+# Em produção use: wrangler secret put <NOME>
+SESSION_PEPPER=troque-por-32-bytes-aleatorios-no-seu-ambiente
+BOOTSTRAP_TOKEN=troque-por-um-token-forte-de-bootstrap
+DEMO_MODE=true
+APP_ORIGIN=http://localhost:8787

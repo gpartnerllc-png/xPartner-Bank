@@ -1,0 +1,27 @@
+{
+  "name": "xpartner-bank",
+  "version": "1.0.0",
+  "private": true,
+  "description": "xPartner Bank - núcleo bancário, adquirência, Pix e fiscal em tempo real",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "dev": "node --watch src/main.ts",
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "demo:balance": "node scripts/demo-balance.ts",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "fastify": "^5.12.7",
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3"
+  }
+}

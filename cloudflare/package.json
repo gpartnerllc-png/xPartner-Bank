@@ -1,0 +1,22 @@
+{
+  "name": "xpartner-bank-edge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "xPartner Bank no edge Cloudflare: Workers, D1, KV, R2, Queues e Workers AI",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "db:migrate:local": "wrangler d1 migrations apply xpartner-bank --local",
+    "db:migrate": "wrangler d1 migrations apply xpartner-bank --remote",
+    "types": "wrangler types",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261031.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.156.0"
+  }
+}

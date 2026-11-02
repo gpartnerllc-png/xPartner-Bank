@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>xPartner Bank — Aplicativo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%235ef2b2'/%3E%3Cpath d='M18 18l28 28M46 18L18 46' stroke='%2307110d' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#050908;
+    --panel:#0a1310;
+    --panel-2:#0c1814;
+    --panel-3:#0e1c17;
+    --line:rgba(148,255,205,.09);
+    --line-strong:rgba(148,255,205,.16);
+    --text:#e9f5ef;
+    --muted:#87a397;
+    --dim:#5d766c;
+    --mint:#5ef2b2;
+    --lime:#c9f76f;
+    --amber:#ffcd6b;
+    --red:#ff7b7b;
+    --blue:#7cc7ff;
+    --violet:#c3a7ff;
+    --radius:16px;
+    --mono:"SFMono-Regular",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 500px at 88% -12%,rgba(94,242,178,.08),transparent 60%),
+      radial-gradient(700px 500px at -12% 30%,rgba(124,199,255,.05),transparent 55%);
+  }
+  a{color:var(--mint);text-decoration:none}
+  button{font-family:inherit}
+  ::selection{background:rgba(94,242,178,.28)}
+  .app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+
+  /* Sidebar */
+  .sidebar{
+    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:22px;
+    padding:22px 16px;border-right:1px solid var(--line);background:linear-gradient(180deg,#08110e,#060c0a);
+  }
+  .brand{display:flex;align-items:center;gap:11px;padding:2px 8px 16px;border-bottom:1px solid var(--line)}
+  .mark{
+    width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;
+    background:linear-gradient(135deg,var(--mint),var(--lime));color:#04120c;font-weight:900;font-size:20px;
+    letter-spacing:-1px;box-shadow:0 8px 22px rgba(94,242,178,.22);
+  }
+  .brand strong{display:block;font-size:14.5px;letter-spacing:.1px}
+  .brand strong span{color:var(--mint)}
+  .brand small{display:block;margin-top:2px;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .workspace{
+    border:1px solid var(--line);border-radius:14px;background:rgba(12,24,20,.7);padding:12px;display:flex;gap:10px;align-items:center;
+  }
+  .workspace .avatar{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:12px;color:var(--mint);background:rgba(94,242,178,.1);border:1px solid var(--line-strong);flex:none}
+  .workspace b{display:block;font-size:12px;font-weight:600;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .workspace small{display:block;font-size:9.5px;color:var(--dim);font-family:var(--mono);margin-top:2px}
+  .side-nav{display:flex;flex-direction:column;gap:2px;overflow-y:auto;flex:1}
+  .side-label{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);padding:14px 10px 6px}
+  .side-nav button{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;color:var(--muted);
+    font-size:12.5px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:.15s;
+  }
+  .side-nav button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.85}
+  .side-nav button:hover{background:rgba(148,255,205,.06);color:var(--text)}
+  .side-nav button.active{background:rgba(94,242,178,.12);color:var(--mint);font-weight:600}
+  .side-nav button .count{margin-left:auto;font-size:10px;color:var(--dim);font-family:var(--mono)}
+  .side-foot{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px}
+  .side-foot a{font-size:11.5px;color:var(--dim);padding:6px 10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+  .side-foot a:hover{color:var(--text);background:rgba(148,255,205,.05)}
+
+  /* Content */
+  .content{min-width:0;display:flex;flex-direction:column}
+  .topbar{
+    position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:18px;
+    padding:14px 28px;border-bottom:1px solid var(--line);background:rgba(5,9,8,.86);backdrop-filter:blur(18px);
+  }
+  .crumb{min-width:0}
+  .crumb small{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .crumb h1{margin:3px 0 0;font-size:18px;letter-spacing:-.3px;font-weight:700}
+  .top-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+  .live{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);padding:6px 11px;border-radius:999px;background:rgba(10,19,16,.7)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 0 rgba(94,242,178,.55);animation:pulse 2s infinite}
+  .dot.off{background:var(--red);animation:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(94,242,178,.45)}70%{box-shadow:0 0 0 8px rgba(94,242,178,0)}100%{box-shadow:0 0 0 0 rgba(94,242,178,0)}}
+  .clock{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:right;line-height:1.5}
+  .clock b{display:block;color:var(--text);font-size:13px;font-weight:600}
+  .top-user{display:flex;align-items:center;gap:9px;padding-left:12px;border-left:1px solid var(--line)}
+  .top-user .avatar{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--mint);background:rgba(94,242,178,.1);border:1px solid var(--line-strong)}
+  .top-user small{display:block;font-size:10.5px;color:var(--dim)}
+
+  main{padding:24px 28px 56px;min-width:0}
+  .view{display:none}
+  .view.active{display:block;animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .view-head h2{margin:0;font-size:21px;letter-spacing:-.4px}
+  .view-head p{margin:5px 0 0;font-size:12.5px;color:var(--muted);max-width:720px}
+  .view-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  .grid{display:grid;gap:16px}
+  .kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:16px}
+  .cols{grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);align-items:start}
+  .stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .card{
+    background:linear-gradient(180deg,rgba(13,24,20,.88),rgba(9,17,14,.94));border:1px solid var(--line);
+    border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;min-width:0;
+    box-shadow:0 22px 44px -34px rgba(0,0,0,.95);
+  }
+  .card::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(140deg,rgba(255,255,255,.02),transparent 38%)}
+  .card.accent{background:linear-gradient(135deg,rgba(94,242,178,.16),rgba(201,247,111,.05) 55%,rgba(9,17,14,.96));border-color:rgba(94,242,178,.28)}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .card-head h3{margin:0;font-size:13px;font-weight:650;display:flex;align-items:center;gap:8px}
+  .card-head p{margin:4px 0 0;font-size:11px;color:var(--dim)}
+  .kpi-label{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+  .kpi-value{font-size:clamp(21px,2vw,27px);font-weight:700;letter-spacing:-.8px;margin:12px 0 5px;font-variant-numeric:tabular-nums}
+  .kpi-sub{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .kpi-sub b{color:var(--mint);font-weight:600}
+  .kpi-sub .warn{color:var(--amber)}
+  .icon{width:29px;height:29px;border-radius:9px;display:grid;place-items:center;background:rgba(148,255,205,.07);border:1px solid var(--line)}
+  .icon svg{width:14px;height:14px;stroke:var(--mint);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .accent .icon{background:rgba(4,18,12,.32);border-color:rgba(4,18,12,.2)}
+  .accent .icon svg{stroke:#04120c}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:10px;border:1px solid var(--line-strong);
+    background:rgba(148,255,205,.06);color:var(--text);font-size:12px;padding:8px 13px;cursor:pointer;transition:.15s;white-space:nowrap;
+  }
+  .btn:hover{background:rgba(148,255,205,.11);border-color:rgba(148,255,205,.28)}
+  .btn.primary{background:linear-gradient(135deg,var(--mint),var(--lime));border-color:transparent;color:#05120c;font-weight:700}
+  .btn.primary:hover{filter:brightness(1.05)}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:var(--red);border-color:rgba(255,123,123,.25);background:rgba(255,123,123,.06)}
+  .btn.danger:hover{background:rgba(255,123,123,.12)}
+  .btn.sm{padding:5px 9px;font-size:11px;border-radius:8px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+  label.field{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted);letter-spacing:.03em}
+  label.field span{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  input,select,textarea{
+    width:100%;background:#07110d;border:1px solid var(--line-strong);color:var(--text);border-radius:10px;
+    padding:9px 11px;font-size:12.5px;font-family:inherit;transition:.15s;
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(94,242,178,.5);box-shadow:0 0 0 3px rgba(94,242,178,.1)}
+  input::placeholder{color:#41564d}
+  .form-grid{display:grid;gap:12px}
+  .form-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .form-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--muted);white-space:nowrap}
+  .chip.ok{color:var(--mint);border-color:rgba(94,242,178,.3);background:rgba(94,242,178,.08)}
+  .chip.warn{color:var(--amber);border-color:rgba(255,205,107,.3);background:rgba(255,205,107,.08)}
+  .chip.err{color:var(--red);border-color:rgba(255,123,123,.3);background:rgba(255,123,123,.08)}
+  .chip.info{color:var(--blue);border-color:rgba(124,199,255,.3);background:rgba(124,199,255,.08)}
+  .chip.neutral{color:var(--dim)}
+  .mono{font-family:var(--mono)}
+  .muted{color:var(--muted)}
+  .dim{color:var(--dim)}
+  .right{text-align:right}
+  .tiny{font-size:11px}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{
+    text-align:left;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:600;
+    padding:0 10px 9px;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  thead th.right{text-align:right}
+  tbody td{padding:10px;border-bottom:1px solid rgba(148,255,205,.05);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:rgba(148,255,205,.025)}
+  td .strong{font-weight:600;color:var(--text)}
+  td .sub{display:block;font-size:10.5px;color:var(--dim);margin-top:2px}
+  .row-actions{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}
+  .table-wrap{overflow-x:auto;margin:0 -4px}
+  .empty{padding:26px 10px;text-align:center;color:var(--dim);font-size:12px}
+  .empty b{display:block;color:var(--muted);font-weight:600;margin-bottom:4px}
+
+  .tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:rgba(8,16,13,.7);margin-bottom:14px;width:fit-content}
+  .tabs button{border:0;background:transparent;color:var(--muted);font-size:11.5px;padding:7px 13px;border-radius:9px;cursor:pointer}
+  .tabs button.active{background:rgba(94,242,178,.13);color:var(--mint);font-weight:600}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .list{display:flex;flex-direction:column;gap:9px}
+  .list-item{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border-radius:12px;
+    border:1px solid var(--line);background:rgba(8,16,13,.55);
+  }
+  .list-item .li-main{min-width:0}
+  .list-item b{display:block;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .list-item small{display:block;font-size:10.5px;color:var(--dim);margin-top:2px}
+  .list-item .li-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+  .list-item .li-value{font-size:12.5px;font-weight:650;font-variant-numeric:tabular-nums}
+
+  .stat-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  .stat{background:rgba(8,16,13,.6);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .stat small{display:block;font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+  .stat b{display:block;margin-top:7px;font-size:16px;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+
+  .toast-stack{position:fixed;right:18px;bottom:18px;z-index:100;display:flex;flex-direction:column;gap:8px;max-width:340px}
+  .toast{
+    display:flex;gap:9px;align-items:flex-start;padding:11px 13px;border-radius:12px;font-size:12px;
+    border:1px solid rgba(94,242,178,.3);background:rgba(9,20,16,.97);color:var(--text);box-shadow:0 18px 40px -18px #000;
+  }
+  .toast.err{border-color:rgba(255,123,123,.35)}
+  .toast.warn{border-color:rgba(255,205,107,.35)}
+  .toast .tdot{width:7px;height:7px;border-radius:50%;background:var(--mint);margin-top:4px;flex:none}
+  .toast.err .tdot{background:var(--red)}
+  .toast.warn .tdot{background:var(--amber)}
+  .toast small{display:block;color:var(--dim);margin-top:2px;font-size:10.5px}
+
+  .overlay{position:fixed;inset:0;background:rgba(2,5,4,.72);backdrop-filter:blur(3px);z-index:80;display:none}
+  .overlay.open{display:block}
+  .modal{
+    position:fixed;z-index:90;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:86vh;overflow:auto;
+    border:1px solid var(--line-strong);border-radius:18px;background:linear-gradient(180deg,#0c1814,#08110e);
+    box-shadow:0 40px 90px -30px #000;display:none;padding:20px;
+  }
+  .modal.open{display:block}
+  .modal h3{margin:0 0 4px;font-size:15px}
+  .modal .modal-sub{font-size:11.5px;color:var(--dim);margin:0 0 16px}
+  .kv{display:grid;grid-template-columns:130px minmax(0,1fr);gap:8px 12px;font-size:12px;margin-bottom:16px}
+  .kv dt{color:var(--dim);font-size:11px}
+  .kv dd{margin:0;word-break:break-word;font-variant-numeric:tabular-nums}
+  .code-box{
+    display:flex;gap:8px;align-items:center;background:#07110d;border:1px solid var(--line-strong);border-radius:10px;
+    padding:9px 11px;font-family:var(--mono);font-size:11px;word-break:break-all;
+  }
+  .code-box code{flex:1;min-width:0}
+  .copy-note{font-size:10.5px;color:var(--dim);margin-top:7px}
+
+  @media (max-width:1100px){
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .cols{grid-template-columns:minmax(0,1fr)}
+    .stat-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (max-width:860px){
+    .app{grid-template-columns:minmax(0,1fr)}
+    .sidebar{position:static;height:auto;flex-direction:row;align-items:center;overflow-x:auto;gap:14px;padding:12px 14px;border-right:0;border-bottom:1px solid var(--line)}
+    .brand{padding:0;border:0;flex:none}
+    .brand small{display:none}
+    .workspace,.side-label,.side-foot{display:none}
+    .side-nav{flex-direction:row;overflow:visible;gap:4px}
+    .side-nav button{white-space:nowrap;padding:8px 10px}
+    .side-nav button .count{display:none}
+    main{padding:18px 16px 48px}
+    .topbar{padding:12px 16px}
+    .clock{display:none}
+    .form-grid.two,.form-grid.three{grid-template-columns:minmax(0,1fr)}
+  }
+</style>
+<style id="xp-theme-inter-neon">
+  /* Tema Inter laranja + Neon sobre azul profundo */
+  :root{
+    --bg:#050a16;--bg-2:#070f22;--panel:#081326;--panel-2:#0a1830;--panel-3:#0c1d3a;
+    --line:rgba(148,163,184,.13);--line-strong:rgba(148,163,184,.24);
+    --text:#f4f8fd;--muted:#95a7c0;--dim:#6c7f99;
+    --mint:#00ffa3;--lime:#ff8a1f;--amber:#ffc24d;--red:#ff6b7a;--blue:#22d3ee;--violet:#a855f7;
+  }
+  body{background-color:var(--bg)!important;background-image:
+    radial-gradient(1000px 620px at 85% -10%,rgba(255,122,0,.14),transparent 62%),
+    radial-gradient(820px 560px at -8% 18%,rgba(0,255,163,.10),transparent 60%),
+    radial-gradient(720px 520px at 45% 115%,rgba(34,211,238,.08),transparent 62%),
+    linear-gradient(180deg,#050a16 0%,#03060f 100%)!important;background-attachment:fixed}
+  ::selection{background:rgba(255,122,0,.32);color:#fff}
+  a{color:#22d3ee}
+  .topbar{background:rgba(5,10,22,.86)!important;border-bottom-color:var(--line)!important}
+  .sidebar{background:linear-gradient(180deg,#081326,#050a16)!important}
+  .mark{background:linear-gradient(135deg,#ff7a00,#ffa040 52%,#00ffa3)!important;color:#04101e!important;box-shadow:0 10px 28px rgba(255,122,0,.3)!important}
+  .brand h1 span,.brand strong span{color:#00ffa3}
+  .nav{border-color:var(--line)!important;background:rgba(8,19,38,.7)!important}
+  .nav a:hover,.side-nav button:hover,.side-foot a:hover{background:rgba(0,255,163,.07)!important;color:var(--text)!important}
+  .nav a.active{background:linear-gradient(135deg,#ff7a00,#ffa040)!important;color:#06101f!important;box-shadow:0 8px 22px rgba(255,122,0,.26)!important;font-weight:700}
+  .side-nav button.active{background:linear-gradient(90deg,rgba(255,122,0,.18),rgba(0,255,163,.06))!important;color:#ffd7ae!important;font-weight:600}
+  .card{background:linear-gradient(180deg,rgba(9,19,38,.9),rgba(6,13,28,.95))!important;border-color:var(--line)!important}
+  .card.accent{background:linear-gradient(135deg,rgba(255,122,0,.16),rgba(0,255,163,.06) 58%,rgba(8,19,38,.96))!important;border-color:rgba(255,122,0,.28)!important}
+  .card.accent::after{background:radial-gradient(circle,rgba(0,255,163,.2),transparent 65%)!important}
+  .btn.primary{background:linear-gradient(135deg,#ff7a00,#ffa040)!important;border-color:transparent!important;color:#06101f!important;font-weight:700;box-shadow:0 10px 26px rgba(255,122,0,.24)!important}
+  .btn.ghost{background:rgba(0,255,163,.05)!important;border-color:var(--line-strong)!important;color:var(--text)!important}
+  .btn.ghost:hover{background:rgba(0,255,163,.1)!important}
+  .avatar,.top-user .avatar,.workspace .avatar{background:linear-gradient(135deg,rgba(255,122,0,.22),rgba(0,255,163,.14))!important;color:#ffd7ae!important;border-color:rgba(255,122,0,.3)!important}
+  .dot{background:#00ffa3!important}
+  .live{border-color:rgba(0,255,163,.18)!important;background:rgba(6,13,28,.72)!important}
+  .field input,.field select,.field textarea{background:rgba(4,10,22,.75)!important;border-color:var(--line-strong)!important;color:var(--text)!important}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(255,122,0,.5)!important;box-shadow:0 0 0 3px rgba(255,122,0,.12)!important}
+  .tag{background:rgba(0,255,163,.04)!important;border-color:var(--line)!important}
+  .tag.ok{color:#00ffa3!important;border-color:rgba(0,255,163,.3)!important;background:rgba(0,255,163,.07)!important}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">X</div>
+      <div>
+        <strong>xPartner <span>Bank</span></strong>
+        <small>Business banking</small>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="avatar" id="wsAvatar">XP</div>
+      <div style="min-width:0">
+        <b id="wsName">Carregando…</b>
+        <small id="wsMeta">—</small>
+      </div>
+    </div>
+
+    <nav class="side-nav" aria-label="Seções do aplicativo">
+      <div class="side-label">Operação</div>
+      <button data-route="overview" class="active">
+        <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/></svg>
+        Visão geral
+      </button>
+      <button data-route="sales">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>
+        Vendas
+      </button>
+      <button data-route="charges">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16v10H4zM4 10h16M8 14h3"/></svg>
+        Cobranças
+        <span class="count" id="navCharges">—</span>
+      </button>
+      <button data-route="subscriptions">
+        <svg viewBox="0 0 24 24"><path d="M20 8a8 8 0 1 0 1 6M20 4v4h-4"/></svg>
+        Assinaturas
+      </button>
+
+      <div class="side-label">Relacionamento</div>
+      <button data-route="customers">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 6a3 3 0 0 1 0 6M18 20c0-2-.7-3.8-1.8-5"/></svg>
+        Clientes
+      </button>
+      <button data-route="fiscal">
+        <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6"/></svg>
+        Notas fiscais
+      </button>
+
+      <div class="side-label">Financeiro</div>
+      <button data-route="statement">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Conta e extrato
+      </button>
+      <button data-route="settlements">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/></svg>
+        Liquidações
+      </button>
+      <button data-route="risk">
+        <svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.4 8-8 9-4.6-1-8-4-8-9V7z"/><path d="M12 8v4M12 15h.01"/></svg>
+        Risco e antifraude
+      </button>
+
+      <div class="side-label">Banco aberto</div>
+      <button data-route="openfinance">
+        <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a4 4 0 0 0 6 5l2-2M16 12l2-2a4 4 0 0 0-6-5l-2 2"/></svg>
+        Open Finance
+      </button>
+      <button data-route="investments">
+        <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6"/></svg>
+        Investimentos
+      </button>
+
+      <div class="side-label">Plataforma</div>
+      <button data-route="tokenization">
+        <svg viewBox="0 0 24 24"><path d="M12 2l8 4v12l-8 4-8-4V6z"/><path d="M12 8v8M8 10l8 4M16 10l-8 4"/></svg>
+        Tokenização e Web3
+      </button>
+    </nav>
+
+    <div class="side-foot">
+      <a href="/">Dashboard de vendas <span>↗</span></a>
+      <a href="/docs">API / OpenAPI <span>↗</span></a>
+      <a href="/tokenization.html">Ativos digitais <span>↗</span></a>
+    </div>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <div class="crumb">
+        <small id="crumbSection">Operação</small>
+        <h1 id="crumbTitle">Visão geral</h1>
+      </div>
+      <div class="top-right">
+        <div class="live"><span class="dot" id="liveDot"></span><span id="liveLabel">Conectado</span></div>
+        <div class="clock"><b id="clock">--:--:--</b><span id="clockDate">—</span></div>
+        <div class="top-user">
+          <div class="avatar" id="topAvatar">XP</div>
+          <small id="topEmail">ambiente demo</small>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Visão geral -->
+      <section class="view active" data-view="overview">
+        <div class="view-head">
+          <div>
+            <h2>Visão geral da conta</h2>
+            <p>Saldo, recebíveis, cobranças e movimentações do estabelecimento em um único painel.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn" data-route-link="statement">Ver extrato completo</button>
+            <button class="btn primary" data-route-link="charges">Nova cobrança</button>
+          </div>
+        </div>
+
+        <div class="grid kpis">
+          <div class="card accent">
+            <div class="kpi-label">Saldo disponível <span class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h16v10H4zM4 10h16"/></svg></span></div>
+            <div class="kpi-value" id="kpiAvailable">—</div>
+            <div class="kpi-sub" id="kpiAvailableSub">liquidações concluídas</div>
+          </div>
+          <div class="card">
+            <div class="kpi-label">A receber <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></div>
+            <div class="kpi-value" id="kpiReceivable">—</div>
+            <div class="kpi-sub" id="kpiReceivableSub">recebíveis em processamento</div>
+          </div>
+          <div class="card">
+            <div class="kpi-label">Volume hoje <span class="icon"><svg viewBox="0 0 24 24"><path d="M4 18V8M10 18V4M16 18v-7M22 18H2"/></svg></span></div>
+            <div class="kpi-value" id="kpiVolume">—</div>
+            <div class="kpi-sub" id="kpiVolumeSub">—</div>
+          </div>
+          <div class="card">
+            <div class="kpi-label">Vendas hoje <span class="icon"><svg viewBox="0 0 24 24"><path d="M6 7h12l-1 13H7zM9 7a3 3 0 0 1 6 0"/></svg></span></div>
+            <div class="kpi-value" id="kpiSales">—</div>
+            <div class="kpi-sub" id="kpiSalesSub">—</div>
+          </div>
+        </div>
+
+        <div class="grid cols">
+          <div class="stack">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <h3>Cobranças em aberto</h3>
+                  <p>Boletos, links e faturas aguardando pagamento.</p>
+                </div>
+                <button class="btn sm" data-route-link="charges">Gerenciar</button>
+              </div>
+              <div class="stat-strip" id="billingStats">
+                <div class="stat"><small>Boletos abertos</small><b>—</b></div>
+                <div class="stat"><small>Links ativos</small><b>—</b></div>
+                <div class="stat"><small>Faturas abertas</small><b>—</b></div>
+                <div class="stat"><small>MRR assinaturas</small><b>—</b></div>
+              </div>
+              <div class="list" id="overviewBoletos" style="margin-top:14px"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <h3>Últimos lançamentos</h3>
+                  <p>Entradas e saídas registradas no razão contábil.</p>
+                </div>
+                <button class="btn sm" data-route-link="statement">Extrato</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="right">Valor</th></tr></thead>
+                  <tbody id="overviewStatement"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <h3>Notas fiscais</h3>
+                  <p>NFC-e emitidas para as vendas aprovadas.</p>
+                </div>
+                <button class="btn sm" data-route-link="fiscal">Abrir</button>
+              </div>
+              <div class="list" id="overviewFiscal"></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <h3>Recebíveis</h3>
+                  <p>Próximas liquidações e antecipações.</p>
+                </div>
+                <button class="btn sm" data-route-link="settlements">Ver</button>
+              </div>
+              <div class="list" id="overviewSettlements"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Vendas -->
+      <section class="view" data-view="sales">
+        <div class="view-head">
+          <div>
+            <h2>Vendas</h2>
+            <p>Transações capturadas pelo terminal, com status de risco, liquidação e nota fiscal.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn" id="refreshSales">Atualizar</button>
+            <a class="btn primary" href="/">Abrir maquininha <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Descrição</th><th>Meio</th><th>Status</th><th>Fiscal</th><th class="right">Valor</th><th class="right">Líquido</th></tr></thead>
+              <tbody id="salesTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cobranças -->
+      <section class="view" data-view="charges">
+        <div class="view-head">
+          <div>
+            <h2>Cobranças</h2>
+            <p>Emita boletos registrados, links de pagamento e cobranças Pix com conciliação automática.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshCharges">Atualizar</button></div>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button class="active" data-pane="boletos">Boletos</button>
+          <button data-pane="links">Links de pagamento</button>
+          <button data-pane="pix">Pix</button>
+        </div>
+
+        <div class="pane active" data-pane-view="boletos">
+          <div class="grid cols">
+            <div class="card">
+              <div class="card-head"><div><h3>Boletos emitidos</h3><p>Linha digitável, vencimento e situação.</p></div></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Nosso número</th><th>Pagador</th><th>Vencimento</th><th>Status</th><th class="right">Valor</th><th></th></tr></thead>
+                  <tbody id="boletosTable"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Novo boleto</h3><p>Registro imediato com DV e código de barras válidos.</p></div></div>
+              <form id="boletoForm" class="form-grid">
+                <div class="form-grid two">
+                  <label class="field"><span>Valor (R$)</span><input name="amount" inputmode="decimal" placeholder="0,00" required /></label>
+                  <label class="field"><span>Vencimento</span><input name="dueDate" type="date" required /></label>
+                </div>
+                <label class="field"><span>Descrição</span><input name="description" maxlength="120" placeholder="Ex.: Mensalidade de outubro" /></label>
+                <div class="form-grid two">
+                  <label class="field"><span>Cliente</span><select name="customerId" id="boletoCustomer"></select></label>
+                  <label class="field"><span>Pagador (opcional)</span><input name="payerName" maxlength="80" placeholder="Nome do pagador" /></label>
+                </div>
+                <label class="field"><span>Documento do pagador (CPF/CNPJ)</span><input name="payerDocument" inputmode="numeric" maxlength="20" placeholder="Obrigatório sem cliente vinculado" /></label>
+                <p class="tiny dim" style="margin:0">Ao selecionar um cliente, nome e documento são preenchidos automaticamente.</p>
+                <div class="form-foot"><button class="btn primary" type="submit">Emitir boleto</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" data-pane-view="links">
+          <div class="grid cols">
+            <div class="card">
+              <div class="card-head"><div><h3>Links de pagamento</h3><p>Checkout público com Pix ou boleto.</p></div></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th>Status</th><th class="right">Valor</th><th></th></tr></thead>
+                  <tbody id="linksTable"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Novo link</h3><p>Compartilhe o checkout e receba automaticamente.</p></div></div>
+              <form id="linkForm" class="form-grid">
+                <div class="form-grid two">
+                  <label class="field"><span>Valor (R$)</span><input name="amount" inputmode="decimal" placeholder="0,00" required /></label>
+                  <label class="field"><span>Forma</span><select name="kind"><option value="PIX">Pix</option><option value="BOLETO">Boleto</option></select></label>
+                </div>
+                <label class="field"><span>Descrição</span><input name="description" maxlength="120" placeholder="Ex.: Pedido #1042" /></label>
+                <label class="field"><span>Cliente</span><select name="customerId" id="linkCustomer"></select></label>
+                <label class="field" id="linkDueField" style="display:none"><span>Vencimento do boleto</span><input name="dueDate" type="date" /></label>
+                <div class="form-foot"><button class="btn primary" type="submit">Criar link</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" data-pane-view="pix">
+          <div class="grid cols">
+            <div class="card">
+              <div class="card-head"><div><h3>Cobranças Pix</h3><p>BR Code dinâmico com baixa automática.</p></div></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>TxID</th><th>Criada em</th><th>Status</th><th class="right">Valor</th><th></th></tr></thead>
+                  <tbody id="pixTable"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Nova cobrança Pix</h3><p>Mostre o código ou compartilhe o payload.</p></div></div>
+              <form id="pixForm" class="form-grid">
+                <label class="field"><span>Valor (R$)</span><input name="amount" inputmode="decimal" placeholder="0,00" required /></label>
+                <label class="field"><span>Descrição</span><input name="description" maxlength="120" placeholder="Ex.: Venda no balcão" /></label>
+                <div class="form-foot"><button class="btn primary" type="submit">Gerar cobrança</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Assinaturas -->
+      <section class="view" data-view="subscriptions">
+        <div class="view-head">
+          <div>
+            <h2>Assinaturas</h2>
+            <p>Receita recorrente com faturas automáticas em Pix ou boleto.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshSubs">Atualizar</button></div>
+        </div>
+        <div class="grid cols">
+          <div class="card">
+            <div class="card-head"><div><h3>Assinaturas ativas</h3><p>Clientes, periodicidade e próxima cobrança.</p></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>Plano</th><th>Periodicidade</th><th>Próxima</th><th>Status</th><th class="right">Valor</th><th></th></tr></thead>
+                <tbody id="subsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Nova assinatura</h3><p>A primeira fatura é gerada na hora.</p></div></div>
+            <form id="subForm" class="form-grid">
+              <label class="field"><span>Cliente</span><select name="customerId" id="subCustomer" required></select></label>
+              <label class="field"><span>Plano</span><input name="description" maxlength="120" placeholder="Ex.: Clube do café — 1kg/mês" required /></label>
+              <div class="form-grid two">
+                <label class="field"><span>Valor (R$)</span><input name="amount" inputmode="decimal" placeholder="0,00" required /></label>
+                <label class="field"><span>Periodicidade</span><select name="period"><option value="MONTHLY">Mensal</option><option value="WEEKLY">Semanal</option><option value="QUARTERLY">Trimestral</option><option value="YEARLY">Anual</option></select></label>
+              </div>
+              <label class="field"><span>Meio de cobrança</span><select name="method"><option value="PIX">Pix</option><option value="BOLETO">Boleto</option></select></label>
+              <div class="form-foot"><button class="btn primary" type="submit">Criar assinatura</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-head"><div><h3>Faturas de assinatura</h3><p>Cobranças geradas pelo motor recorrente.</p></div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Vencimento</th><th>Cliente</th><th>Referência</th><th>Status</th><th class="right">Valor</th><th></th></tr></thead>
+              <tbody id="invoicesTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Clientes -->
+      <section class="view" data-view="customers">
+        <div class="view-head">
+          <div>
+            <h2>Clientes</h2>
+            <p>Cadastro com validação de CPF/CNPJ e mascaramento de dados pessoais.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshCustomers">Atualizar</button></div>
+        </div>
+        <div class="grid cols">
+          <div class="card">
+            <div class="card-head"><div><h3>Base de clientes</h3><p>Documentos são armazenados normalizados e exibidos mascarados.</p></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Contato</th><th>Cidade</th><th>Status</th></tr></thead>
+                <tbody id="customersTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Novo cliente</h3><p>CPF ou CNPJ validados pelo dígito verificador.</p></div></div>
+            <form id="customerForm" class="form-grid">
+              <label class="field"><span>Nome / Razão social</span><input name="name" maxlength="80" required /></label>
+              <label class="field"><span>CPF ou CNPJ</span><input name="document" maxlength="20" placeholder="000.000.000-00" required /></label>
+              <div class="form-grid two">
+                <label class="field"><span>E-mail</span><input name="email" type="email" maxlength="120" /></label>
+                <label class="field"><span>Telefone</span><input name="phone" maxlength="20" placeholder="(11) 99999-9999" /></label>
+              </div>
+              <div class="form-grid two">
+                <label class="field"><span>Cidade</span><input name="city" maxlength="60" /></label>
+                <label class="field"><span>UF</span><input name="uf" maxlength="2" placeholder="SP" /></label>
+              </div>
+              <div class="form-foot"><button class="btn primary" type="submit">Cadastrar cliente</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Notas fiscais -->
+      <section class="view" data-view="fiscal">
+        <div class="view-head">
+          <div>
+            <h2>Notas fiscais</h2>
+            <p>NFC-e emitidas pelo worker fiscal a partir das vendas aprovadas.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshFiscal">Atualizar</button></div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Emissão</th><th>Número</th><th>Descrição</th><th>Status</th><th>Chave de acesso</th><th class="right">Valor</th></tr></thead>
+              <tbody id="fiscalTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Extrato -->
+      <section class="view" data-view="statement">
+        <div class="view-head">
+          <div>
+            <h2>Conta e extrato</h2>
+            <p>Lançamentos do razão com saldo disponível, a receber e exportação contábil.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn" id="downloadCsv">Exportar CSV</button>
+            <button class="btn" id="refreshStatement">Atualizar</button>
+          </div>
+        </div>
+        <div class="grid kpis" style="grid-template-columns:repeat(5,minmax(0,1fr))" id="statementKpis">
+          <div class="card accent"><div class="kpi-label">Disponível</div><div class="kpi-value" id="stAvailable">—</div><div class="kpi-sub">saldo liquidado</div></div>
+          <div class="card"><div class="kpi-label">A receber</div><div class="kpi-value" id="stReceivable">—</div><div class="kpi-sub">em processamento</div></div>
+          <div class="card"><div class="kpi-label">Entradas</div><div class="kpi-value" id="stInflow">—</div><div class="kpi-sub">recebíveis do período</div></div>
+          <div class="card"><div class="kpi-label">Liquidado</div><div class="kpi-value" id="stSettled">—</div><div class="kpi-sub">creditado na conta</div></div>
+          <div class="card"><div class="kpi-label">Saídas</div><div class="kpi-value" id="stOutflow">—</div><div class="kpi-sub">tarifas e débitos</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div><h3>Lançamentos</h3><p id="statementRange">Últimos 30 dias</p></div>
+            <form id="statementForm" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+              <label class="field"><span>De</span><input type="date" name="from" /></label>
+              <label class="field"><span>Até</span><input type="date" name="to" /></label>
+              <button class="btn sm" type="submit">Filtrar</button>
+            </form>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th>Conta</th><th class="right">Valor</th></tr></thead>
+              <tbody id="statementTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Liquidações -->
+      <section class="view" data-view="settlements">
+        <div class="view-head">
+          <div>
+            <h2>Liquidações</h2>
+            <p>Agenda D+0 e D+1, taxas e antecipações.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshSettlements">Atualizar</button></div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Agendada</th><th>Descrição</th><th>Meio</th><th>Modo</th><th>Status</th><th class="right">Bruto</th><th class="right">Taxas</th><th class="right">Líquido</th></tr></thead>
+              <tbody id="settlementsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Risco -->
+      <section class="view" data-view="risk">
+        <div class="view-head">
+          <div>
+            <h2>Risco e antifraude</h2>
+            <p>Grafo de relacionamento, negativas e score por transação.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshRisk">Atualizar</button></div>
+        </div>
+        <div class="grid kpis" style="grid-template-columns:repeat(4,minmax(0,1fr))" id="riskKpis">
+          <div class="card"><div class="kpi-label">Entidades no grafo</div><div class="kpi-value" id="riskNodes">—</div><div class="kpi-sub">cartões, terminais e dispositivos</div></div>
+          <div class="card"><div class="kpi-label">Arestas</div><div class="kpi-value" id="riskEdges">—</div><div class="kpi-sub">relacionamentos observados</div></div>
+          <div class="card"><div class="kpi-label">Sinalizações</div><div class="kpi-value" id="riskFlagged">—</div><div class="kpi-sub">entidades marcadas</div></div>
+          <div class="card"><div class="kpi-label">Alta dispersão</div><div class="kpi-value" id="riskFanout">—</div><div class="kpi-sub">cartões com múltiplos terminais</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h3>Negativas recentes</h3><p>Transações recusadas pela política de risco.</p></div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Transação</th><th>Score</th><th>Motivo</th><th class="right">Valor</th></tr></thead>
+              <tbody id="riskTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tokenização -->
+      <section class="view" data-view="tokenization">
+        <div class="view-head">
+          <div>
+            <h2>Tokenização e Web3</h2>
+            <p>Ativos do mundo real, trilha de âncoras e guardrails operacionais.</p>
+          </div>
+          <div class="view-actions"><a class="btn primary" href="/tokenization.html">Abrir painel completo <span aria-hidden="true">↗</span></a></div>
+        </div>
+        <div class="grid kpis">
+          <div class="card"><div class="kpi-label">Ativos RWA</div><div class="kpi-value" id="tkAssets">—</div><div class="kpi-sub">lastreados em recebíveis</div></div>
+          <div class="card"><div class="kpi-label">Oferta total</div><div class="kpi-value" id="tkSupply">—</div><div class="kpi-sub">unidades em circulação</div></div>
+          <div class="card"><div class="kpi-label">Reserva</div><div class="kpi-value" id="tkReserve">—</div><div class="kpi-sub">colateral registrado</div></div>
+          <div class="card"><div class="kpi-label">Âncora</div><div class="kpi-value" id="tkAnchor">—</div><div class="kpi-sub">última prova de integridade</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h3>Ativos recentes</h3><p>Panorama do módulo de tokenização.</p></div><a class="btn sm" href="/tokenization.html">Gerenciar</a></div>
+          <div class="list" id="tkList"></div>
+        </div>
+      </section>
+      <!-- Open Finance -->
+      <section class="view" data-view="openfinance">
+        <div class="view-head">
+          <div>
+            <h2>Open Finance</h2>
+            <p>Consentimentos do titular, contas vinculadas, débito externo e iniciação de pagamento Pix.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshOpenFinance">Atualizar</button></div>
+        </div>
+
+        <div class="grid kpis">
+          <div class="card"><div class="kpi-label">Consentimentos ativos</div><div class="kpi-value" id="ofConsents">—</div><div class="kpi-sub">autorizados e dentro da validade</div></div>
+          <div class="card"><div class="kpi-label">Contas vinculadas</div><div class="kpi-value" id="ofAccounts">—</div><div class="kpi-sub">habilitadas para operar</div></div>
+          <div class="card"><div class="kpi-label">Débitos agendados</div><div class="kpi-value" id="ofScheduled">—</div><div class="kpi-sub">em contas externas</div></div>
+          <div class="card"><div class="kpi-label">Pagamentos no mês</div><div class="kpi-value" id="ofPayments">—</div><div class="kpi-sub" id="ofPaymentsSub">—</div></div>
+        </div>
+
+        <div class="grid cols">
+          <div class="card">
+            <div class="card-head"><div><h3>Consentimentos</h3><p>Autorizações concedidas pelo titular em outras instituições.</p></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Instituição</th><th>Escopo</th><th>Conta</th><th>Expira</th><th>Status</th><th></th></tr></thead>
+                <tbody id="ofConsentsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Novo consentimento</h3><p>Vincula a conta de um cliente ao estabelecimento.</p></div></div>
+            <form id="ofConsentForm" class="form-grid">
+              <div class="form-grid two">
+                <label class="field"><span>Instituição</span><input name="provider" maxlength="60" placeholder="Ex.: Banco do Brasil S.A." required /></label>
+                <label class="field"><span>Código da instituição</span><input name="providerCode" maxlength="30" placeholder="Ex.: BB" required /></label>
+              </div>
+              <div class="form-grid two">
+                <label class="field"><span>Escopo</span><select name="kind"><option value="EXTERNAL_DEBIT">Débito externo</option><option value="PAYMENT_INITIATION">Iniciação de pagamento</option><option value="DATA_SHARING">Compartilhamento de dados</option></select></label>
+                <label class="field"><span>Tipo de conta</span><select name="accountType"><option value="CHECKING">Corrente</option><option value="SAVINGS">Poupança</option><option value="PAYMENT">Pagamento</option></select></label>
+              </div>
+              <label class="field"><span>Titular</span><select name="customerId" id="ofConsentCustomer" required></select></label>
+              <div class="form-grid two">
+                <label class="field"><span>Agência</span><input name="branch" inputmode="numeric" maxlength="6" placeholder="1234" required /></label>
+                <label class="field"><span>Conta</span><input name="number" inputmode="numeric" minlength="4" maxlength="20" placeholder="56789012" required /></label>
+              </div>
+              <label class="field"><span>Saldo informado (R$)</span><input name="balance" inputmode="decimal" placeholder="Opcional" /></label>
+              <div class="form-foot"><button class="btn primary" type="submit">Solicitar consentimento</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="grid cols" style="margin-top:16px">
+          <div class="card">
+            <div class="card-head"><div><h3>Débitos externos</h3><p>Cobranças agendadas em contas de outras instituições.</p></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Descrição</th><th>Instituição</th><th>Vencimento</th><th>Status</th><th class="right">Valor</th><th></th></tr></thead>
+                <tbody id="ofDebitsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Agendar débito</h3><p>Usa um consentimento de débito autorizado.</p></div></div>
+            <form id="ofDebitForm" class="form-grid">
+              <label class="field"><span>Consentimento</span><select name="consentId" id="ofDebitConsent" required></select></label>
+              <div class="form-grid two">
+                <label class="field"><span>Valor (R$)</span><input name="amount" inputmode="decimal" placeholder="0,00" required /></label>
+                <label class="field"><span>Vencimento</span><input name="dueDate" type="date" required /></label>
+              </div>
+              <label class="field"><span>Descrição</span><input name="description" maxlength="120" placeholder="Ex.: Mensalidade do buffet" /></label>
+              <div class="form-foot"><button class="btn primary" type="submit">Agendar débito</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="grid cols" style="margin-top:16px">
+          <div class="card">
+            <div class="card-head"><div><h3>Pagamentos iniciados</h3><p>Saídas Pix aprovadas por consentimento de iniciação.</p></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Descrição</th><th>Chave Pix</th><th>Status</th><th class="right">Total</th><th></th></tr></thead>
+                <tbody id="ofPaymentsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Iniciar pagamento</h3><p>Débito no saldo disponível com tarifa de iniciação.</p></div></div>
+            <form id="ofPaymentForm" class="form-grid">
+              <label class="field"><span>Consentimento</span><select name="consentId" id="ofPaymentConsent" required></select></label>
+              <div class="form-grid two">
+                <label class="field"><span>Valor (R$)</span><input name="amount" inputmode="decimal" placeholder="0,00" required /></label>
+                <label class="field"><span>Chave Pix</span><input name="pixKey" maxlength="120" placeholder="fornecedor@exemplo.com.br" required /></label>
+              </div>
+              <label class="field"><span>Descrição</span><input name="description" maxlength="120" placeholder="Ex.: Compra de insumos" /></label>
+              <div class="form-foot"><button class="btn primary" type="submit">Iniciar pagamento</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Investimentos -->
+      <section class="view" data-view="investments">
+        <div class="view-head">
+          <div>
+            <h2>Investimentos</h2>
+            <p>Carteira de renda fixa com liquidez, proventos e retenção de IR.</p>
+          </div>
+          <div class="view-actions"><button class="btn" id="refreshInvestments">Atualizar</button></div>
+        </div>
+
+        <div class="grid kpis">
+          <div class="card accent"><div class="kpi-label">Total investido</div><div class="kpi-value" id="invInvested">—</div><div class="kpi-sub" id="invAvailableSub">—</div></div>
+          <div class="card"><div class="kpi-label">Posições ativas</div><div class="kpi-value" id="invPositions">—</div><div class="kpi-sub">produtos com saldo</div></div>
+          <div class="card"><div class="kpi-label">Proventos no mês</div><div class="kpi-value" id="invProventos">—</div><div class="kpi-sub" id="invScheduledSub">—</div></div>
+          <div class="card"><div class="kpi-label">IR retido</div><div class="kpi-value" id="invTax">—</div><div class="kpi-sub">sobre proventos tributáveis</div></div>
+        </div>
+
+        <div class="grid cols">
+          <div class="card">
+            <div class="card-head"><div><h3>Minha carteira</h3><p>Posições abertas e disponibilidade de resgate.</p></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Produto</th><th>Indexador</th><th>Liquidez</th><th>Resgate a partir de</th><th>Status</th><th class="right">Aplicado</th><th></th></tr></thead>
+                <tbody id="invPositionsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Aplicar</h3><p>O aporte debita o saldo disponível do estabelecimento.</p></div></div>
+            <form id="investForm" class="form-grid">
+              <label class="field"><span>Produto</span><select name="productId" id="investProduct" required></select></label>
+              <label class="field"><span>Valor (R$)</span><input name="amount" inputmode="decimal" placeholder="0,00" required /></label>
+              <p class="tiny dim" id="investHint" style="margin:0">—</p>
+              <div class="form-foot"><button class="btn primary" type="submit">Confirmar aporte</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="grid cols" style="margin-top:16px">
+          <div class="card">
+            <div class="card-head"><div><h3>Proventos</h3><p>Dividendos, JCP e rendimentos com IR retido na fonte.</p></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Produto</th><th>Tipo</th><th>Pagamento</th><th>Status</th><th class="right">Bruto</th><th class="right">IR</th><th class="right">Líquido</th></tr></thead>
+                <tbody id="invProventosTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Agendar provento</h3><p>Simula o evento corporativo do produto.</p></div></div>
+            <form id="proventoForm" class="form-grid">
+              <label class="field"><span>Posição</span><select name="positionId" id="proventoPosition" required></select></label>
+              <div class="form-grid two">
+                <label class="field"><span>Tipo</span><select name="kind"><option value="RENDIMENTO">Rendimento</option><option value="JCP">JCP</option><option value="DIVIDENDO">Dividendo</option></select></label>
+                <label class="field"><span>Valor bruto (R$)</span><input name="gross" inputmode="decimal" placeholder="0,00" required /></label>
+              </div>
+              <div class="form-grid two">
+                <label class="field"><span>Data ex</span><input name="exDate" type="date" required /></label>
+                <label class="field"><span>Pagamento</span><input name="paymentDate" type="date" required /></label>
+              </div>
+              <div class="form-foot"><button class="btn primary" type="submit">Agendar provento</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-head"><div><h3>Produtos disponíveis</h3><p>CDB, LCI, LCA, Tesouro e fundos com indexadores e liquidez.</p></div></div>
+          <div class="list" id="invProductsList"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <h3 id="modalTitle">Detalhes</h3>
+  <p class="modal-sub" id="modalSub"></p>
+  <div id="modalBody"></div>
+</div>
+<div class="toast-stack" id="toasts"></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const money = (cents) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const onlyDigits = (value) => String(value || '').replace(/\D/g, '');
+  const toCents = (value) => {
+    const raw = String(value || '').trim().replace(/\./g, '').replace(',', '.');
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  };
+  const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
+  const fmtDateTime = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+  const todayInput = () => new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  const ROUTES = {
+    overview: ['Operação', 'Visão geral'],
+    sales: ['Operação', 'Vendas'],
+    charges: ['Operação', 'Cobranças'],
+    subscriptions: ['Operação', 'Assinaturas'],
+    customers: ['Relacionamento', 'Clientes'],
+    fiscal: ['Relacionamento', 'Notas fiscais'],
+    statement: ['Financeiro', 'Conta e extrato'],
+    settlements: ['Financeiro', 'Liquidações'],
+    risk: ['Controles', 'Risco e antifraude'],
+    openfinance: ['Banco aberto', 'Open Finance'],
+    investments: ['Banco aberto', 'Investimentos'],
+    tokenization: ['Plataforma', 'Tokenização e Web3'],
+  };
+
+  const state = {
+    token: '',
+    merchant: null,
+    terminalId: '',
+    customers: [],
+    route: 'overview',
+    chargesPane: 'boletos',
+    loaded: new Set(),
+    statementRange: { from: '', to: '' },
+    openfinance: null,
+    investments: null,
+    refreshing: false,
+  };
+
+  async function api(path, options = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(state.token ? { Authorization: 'Bearer ' + state.token } : {}), ...(options.headers || {}) };
+    const res = await fetch(path, { method: options.method || 'GET', headers, body: options.payload ? JSON.stringify(options.payload) : undefined });
+    const text = await res.text();
+    let body = null;
+    try { body = text ? JSON.parse(text) : null; } catch { body = { raw: text }; }
+    if (!res.ok) {
+      const error = new Error((body && body.error && body.error.message) || 'Falha na requisição');
+      error.code = body && body.error ? body.error.code : undefined;
+      throw error;
+    }
+    return body;
+  }
+
+  function toast(message, kind = 'ok', detail = '') {
+    const el = document.createElement('div');
+    el.className = 'toast' + (kind === 'err' ? ' err' : kind === 'warn' ? ' warn' : '');
+    el.innerHTML = '<span class="tdot"></span><div>' + esc(message) + (detail ? '<small>' + esc(detail) + '</small>' : '') + '</div>';
+    $('#toasts').appendChild(el);
+    setTimeout(() => { el.style.transition = '.3s'; el.style.opacity = '0'; el.style.transform = 'translateY(6px)'; }, 4200);
+    setTimeout(() => el.remove(), 4700);
+  }
+
+  function chip(status) {
+    const value = String(status || '').toUpperCase();
+    const map = {
+      PAID: ['ok', 'Pago'], APPROVED: ['ok', 'Aprovada'], AUTHORIZED: ['ok', 'Autorizada'], ACTIVE: ['ok', 'Ativa'],
+      OPEN: ['info', 'Em aberto'], PENDING: ['warn', 'Pendente'], CONTINGENCY: ['warn', 'Contingência'], PAUSED: ['warn', 'Pausada'],
+      OVERDUE: ['err', 'Vencido'], DECLINED: ['err', 'Recusada'], CANCELED: ['neutral', 'Cancelado'], BLOCKED: ['err', 'Bloqueado'],
+      AUTHORISED: ['ok', 'Autorizado'], AWAITING_AUTHORISATION: ['warn', 'Aguardando'], REJECTED: ['err', 'Recusado'],
+      REVOKED: ['neutral', 'Revogado'], EXPIRED: ['err', 'Expirado'], SCHEDULED: ['info', 'Agendado'],
+      SETTLED: ['ok', 'Liquidado'], FAILED: ['err', 'Falhou'], REDEEMED: ['neutral', 'Resgatado'],
+      CLOSED: ['neutral', 'Encerrado'],
+    };
+    const [kind, label] = map[value] || ['neutral', value ? value.toLowerCase() : '—'];
+    return '<span class="chip ' + kind + '">' + esc(label) + '</span>';
+  }
+
+  const methodLabel = { PIX: 'Pix', CREDIT: 'Crédito', DEBIT: 'Débito', VOUCHER: 'Vale' };
+  const consentKindLabel = { DATA_SHARING: 'Dados', EXTERNAL_DEBIT: 'Débito externo', PAYMENT_INITIATION: 'Iniciação Pix' };
+  const accountTypeLabel = { CHECKING: 'Corrente', SAVINGS: 'Poupança', PAYMENT: 'Pagamento' };
+  const liquidityLabel = { D0: 'D+0', D1: 'D+1', D30: 'D+30', MATURITY: 'No vencimento' };
+  const indexerLabel = { CDI: 'CDI', PREFIXADO: 'Prefixado', IPCA: 'IPCA' };
+  const proventoKindLabel = { DIVIDENDO: 'Dividendo', JCP: 'JCP', RENDIMENTO: 'Rendimento' };
+
+  function emptyRow(cols, title, detail) {
+    return '<tr><td colspan="' + cols + '"><div class="empty"><b>' + esc(title) + '</b>' + esc(detail || '') + '</div></td></tr>';
+  }
+
+  function fillCustomerSelects() {
+    const options = ['<option value="">Sem cliente vinculado</option>'].concat(
+      state.customers.map((c) => '<option value="' + esc(c.id) + '">' + esc(c.name) + ' · ' + esc(c.documentMasked || '') + '</option>')
+    ).join('');
+    ['#boletoCustomer', '#linkCustomer', '#subCustomer', '#ofConsentCustomer'].forEach((sel) => {
+      const node = $(sel);
+      if (!node) return;
+      const previous = node.value;
+      node.innerHTML = options;
+      if (previous) node.value = previous;
+    });
+  }
+
+  async function loadCustomers() {
+    const body = await api('/v1/customers?limit=100');
+    state.customers = body.data || [];
+    fillCustomerSelects();
+    $('#customersTable').innerHTML = state.customers.length
+      ? state.customers.map((c) => '<tr>' +
+          '<td><span class="strong">' + esc(c.name) + '</span><span class="sub mono">' + esc(c.id) + '</span></td>' +
+          '<td>' + esc(c.kind === 'PJ' ? 'PJ' : 'PF') + '</td>' +
+          '<td class="mono">' + esc(c.documentMasked) + '</td>' +
+          '<td>' + esc(c.email || c.phone || '—') + '</td>' +
+          '<td>' + esc((c.city || '—') + (c.uf ? '/' + c.uf : '')) + '</td>' +
+          '<td>' + chip(c.status) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(6, 'Nenhum cliente cadastrado', 'Cadastre o primeiro cliente ao lado.');
+  }
+
+  async function refreshCustomersCache() {
+    try { await loadCustomers(); } catch (error) { console.warn(error); }
+  }
+
+  // ── Visão geral ────────────────────────────────────────────────────────────
+  async function loadOverview() {
+    const body = await api('/v1/app/overview');
+    const overview = body.overview;
+    const billing = body.billing;
+    state.merchant = overview.merchant;
+    paintWorkspace(overview.merchant);
+
+    $('#kpiAvailable').textContent = overview.balances.availableFormatted;
+    $('#kpiReceivable').textContent = overview.balances.receivableFormatted;
+    $('#kpiVolume').textContent = overview.today.volumeFormatted;
+    $('#kpiSales').textContent = overview.today.sales + (overview.today.sales === 1 ? ' venda' : ' vendas');
+    $('#kpiAvailableSub').innerHTML = 'recebido hoje <b>' + esc(overview.settledToday.formatted) + '</b>';
+    $('#kpiReceivableSub').innerHTML = 'a liquidar <b>' + esc(overview.settlements.pendingFormatted) + '</b>';
+    $('#kpiVolumeSub').innerHTML = 'ticket médio <b>' + esc(overview.today.avgTicketFormatted) + '</b>';
+    $('#kpiSalesSub').innerHTML = 'aprovação <b>' + esc(overview.today.approvalRate) + '%</b>';
+
+    $('#billingStats').innerHTML =
+      '<div class="stat"><small>Boletos abertos</small><b>' + billing.boletos.open + ' · ' + esc(billing.boletos.openFormatted) + '</b></div>' +
+      '<div class="stat"><small>Links ativos</small><b>' + billing.links.active + ' · ' + esc(billing.links.activeFormatted) + '</b></div>' +
+      '<div class="stat"><small>Faturas abertas</small><b>' + billing.invoices.open + ' · ' + esc(billing.invoices.openFormatted) + '</b></div>' +
+      '<div class="stat"><small>MRR assinaturas</small><b>' + esc(billing.subscriptions.mrrFormatted) + '</b></div>';
+
+    $('#navCharges').textContent = String(billing.boletos.open + billing.links.active + billing.invoices.open);
+
+    $('#overviewStatement').innerHTML = body.statement.entries.length
+      ? body.statement.entries.map((entry) => '<tr>' +
+          '<td class="dim tiny mono">' + esc(fmtDateTime(entry.createdAt)) + '</td>' +
+          '<td><span class="strong">' + esc(entry.description) + '</span><span class="sub">' + esc(entry.source || entry.method || '') + '</span></td>' +
+          '<td class="dim tiny">' + esc(entry.accountKind) + '</td>' +
+          '<td class="right mono" style="color:' + (entry.signedCents < 0 ? 'var(--red)' : 'var(--mint)') + '">' + esc(entry.amountFormatted) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(4, 'Sem lançamentos recentes', 'As vendas e liquidações aparecerão aqui.');
+
+    const boletos = body.boletos || [];
+    $('#overviewBoletos').innerHTML = boletos.length
+      ? boletos.slice(0, 4).map((b) => '<div class="list-item">' +
+          '<div class="li-main"><b>' + esc(b.description) + '</b><small>' + esc(b.payerName) + ' · vence ' + esc(fmtDate(b.dueDate + 'T12:00:00Z')) + '</small></div>' +
+          '<div class="li-side"><span class="li-value">' + esc(b.amountFormatted) + '</span>' + chip(b.status) + '</div>' +
+        '</div>').join('')
+      : '<div class="empty"><b>Nenhum boleto</b>Emita uma cobrança para começar.</div>';
+
+    const fiscal = overview.fiscal;
+    $('#overviewFiscal').innerHTML =
+      '<div class="list-item"><div class="li-main"><b>Autorizadas</b><small>notas transmitidas e validadas</small></div><div class="li-side"><span class="li-value">' + fiscal.authorized + '</span>' + chip('AUTHORIZED') + '</div></div>' +
+      '<div class="list-item"><div class="li-main"><b>Em contingência</b><small>' + (fiscal.pending ? fiscal.pending + ' pendentes de emissão' : 'nenhuma pendência') + '</small></div><div class="li-side"><span class="li-value">' + fiscal.contingency + '</span>' + chip(fiscal.contingency ? 'CONTINGENCY' : 'AUTHORIZED') + '</div></div>';
+
+    const settlements = body.settlements || [];
+    $('#overviewSettlements').innerHTML = settlements.length
+      ? settlements.slice(0, 4).map((s) => '<div class="list-item">' +
+          '<div class="li-main"><b>' + esc(s.description || 'Liquidação') + '</b><small>agenda ' + esc(fmtDate(s.scheduledAt)) + ' · ' + esc(s.mode) + '</small></div>' +
+          '<div class="li-side"><span class="li-value">' + esc(s.netFormatted) + '</span>' + chip(s.status) + '</div>' +
+        '</div>').join('')
+      : '<div class="empty"><b>Sem liquidações</b>A agenda aparece após as vendas.</div>';
+  }
+
+  // ── Vendas ────────────────────────────────────────────────────────────────
+  async function loadSales() {
+    const body = await api('/v1/transactions?limit=40');
+    const rows = body.data || [];
+    $('#salesTable').innerHTML = rows.length
+      ? rows.map((t) => '<tr>' +
+          '<td class="dim tiny mono">' + esc(fmtDateTime(t.createdAt)) + '</td>' +
+          '<td><span class="strong">' + esc(t.description || 'Venda') + '</span><span class="sub">' + esc(t.terminalId) + '</span></td>' +
+          '<td>' + esc(methodLabel[t.method] || t.method) + (t.installments > 1 ? ' ' + t.installments + 'x' : '') + '</td>' +
+          '<td>' + chip(t.status) + '</td>' +
+          '<td>' + chip(t.fiscalStatus || 'PENDING') + '</td>' +
+          '<td class="right mono">' + esc(t.amountFormatted) + '</td>' +
+          '<td class="right mono">' + esc(money(t.netCents)) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(7, 'Nenhuma venda registrada', 'Use a maquininha para capturar a primeira venda.');
+  }
+
+  // ── Cobranças ─────────────────────────────────────────────────────────────
+  async function loadCharges() {
+    await Promise.all([loadBoletos(), loadLinks(), loadPix()]);
+  }
+
+  async function loadBoletos() {
+    const body = await api('/v1/boletos?limit=50');
+    const rows = body.data || [];
+    $('#boletosTable').innerHTML = rows.length
+      ? rows.map((b) => '<tr>' +
+          '<td><span class="strong mono">' + esc(b.ourNumber) + '</span><span class="sub">' + esc(b.description) + '</span></td>' +
+          '<td>' + esc(b.payerName) + '<span class="sub mono">' + esc(b.payerDocumentMasked) + '</span></td>' +
+          '<td class="mono tiny">' + esc(fmtDate(b.dueDate + 'T12:00:00Z')) + '</td>' +
+          '<td>' + chip(b.status) + '</td>' +
+          '<td class="right mono">' + esc(b.amountFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            '<button class="btn sm" data-action="boleto-view" data-id="' + esc(b.id) + '">Ver</button>' +
+            (b.status === 'OPEN' || b.status === 'OVERDUE' ? '<button class="btn sm primary" data-action="boleto-pay" data-id="' + esc(b.id) + '">Baixar</button>' : '') +
+            (b.status === 'OPEN' || b.status === 'OVERDUE' ? '<button class="btn sm danger" data-action="boleto-cancel" data-id="' + esc(b.id) + '">Cancelar</button>' : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(6, 'Nenhum boleto emitido', 'Emita o primeiro boleto ao lado.');
+    return rows;
+  }
+
+  async function loadLinks() {
+    const body = await api('/v1/payment-links?limit=50');
+    const rows = body.data || [];
+    $('#linksTable').innerHTML = rows.length
+      ? rows.map((l) => '<tr>' +
+          '<td><span class="strong mono">' + esc(l.code) + '</span><span class="sub">' + esc(fmtDate(l.createdAt)) + '</span></td>' +
+          '<td>' + esc(l.description || 'Link de pagamento') + '</td>' +
+          '<td>' + esc(l.kind === 'PIX' ? 'Pix' : 'Boleto') + '</td>' +
+          '<td>' + chip(l.status) + '</td>' +
+          '<td class="right mono">' + esc(l.amountFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            '<button class="btn sm" data-action="link-open" data-code="' + esc(l.code) + '">Abrir</button>' +
+            '<button class="btn sm" data-action="link-copy" data-code="' + esc(l.code) + '">Copiar</button>' +
+            (l.status === 'ACTIVE' ? '<button class="btn sm primary" data-action="link-pay" data-code="' + esc(l.code) + '">Baixar</button>' : '') +
+            (l.status === 'ACTIVE' ? '<button class="btn sm danger" data-action="link-cancel" data-code="' + esc(l.code) + '">Cancelar</button>' : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(6, 'Nenhum link criado', 'Crie um link para compartilhar o checkout.');
+    return rows;
+  }
+
+  async function loadPix() {
+    const body = await api('/v1/pix/charges');
+    const rows = body.data || [];
+    $('#pixTable').innerHTML = rows.length
+      ? rows.map((c) => '<tr>' +
+          '<td><span class="strong mono">' + esc(c.txid) + '</span><span class="sub">' + esc(fmtDateTime(c.createdAt)) + '</span></td>' +
+          '<td class="dim tiny mono">' + esc(fmtDate(c.expiresAt)) + '</td>' +
+          '<td>' + chip(c.status) + '</td>' +
+          '<td class="right mono">' + esc(c.amountFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            '<button class="btn sm" data-action="pix-view" data-txid="' + esc(c.txid) + '">Ver código</button>' +
+            (c.status === 'PENDING' ? '<button class="btn sm primary" data-action="pix-pay" data-txid="' + esc(c.txid) + '">Baixar</button>' : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(5, 'Nenhuma cobrança Pix', 'Gere uma cobrança para receber na hora.');
+    return rows;
+  }
+
+  // ── Assinaturas ───────────────────────────────────────────────────────────
+  async function loadSubscriptions() {
+    const [subs, invoices] = await Promise.all([
+      api('/v1/subscriptions?limit=50'),
+      api('/v1/subscription-invoices?limit=50'),
+    ]);
+    const rows = subs.data || [];
+    $('#subsTable').innerHTML = rows.length
+      ? rows.map((s) => '<tr>' +
+          '<td><span class="strong">' + esc(s.customerName) + '</span><span class="sub mono">' + esc(s.customerDocumentMasked) + '</span></td>' +
+          '<td>' + esc(s.description) + '</td>' +
+          '<td>' + esc({ WEEKLY: 'Semanal', MONTHLY: 'Mensal', QUARTERLY: 'Trimestral', YEARLY: 'Anual' }[s.period] || s.period) + '</td>' +
+          '<td class="mono tiny">' + esc(fmtDate(s.nextDueDate + 'T12:00:00Z')) + '</td>' +
+          '<td>' + chip(s.status) + '</td>' +
+          '<td class="right mono">' + esc(s.amountFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            '<button class="btn sm" data-action="sub-view" data-id="' + esc(s.id) + '">Faturas</button>' +
+            (s.status === 'ACTIVE' ? '<button class="btn sm" data-action="sub-pause" data-id="' + esc(s.id) + '">Pausar</button>' : '') +
+            (s.status === 'PAUSED' ? '<button class="btn sm" data-action="sub-resume" data-id="' + esc(s.id) + '">Retomar</button>' : '') +
+            (s.status !== 'CANCELED' ? '<button class="btn sm danger" data-action="sub-cancel" data-id="' + esc(s.id) + '">Cancelar</button>' : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(7, 'Nenhuma assinatura', 'Crie a primeira assinatura ao lado.');
+
+    const invoiceRows = invoices.data || [];
+    $('#invoicesTable').innerHTML = invoiceRows.length
+      ? invoiceRows.map((i) => '<tr>' +
+          '<td class="mono tiny">' + esc(fmtDate(i.dueDate + 'T12:00:00Z')) + '</td>' +
+          '<td>' + esc(i.customerName || '—') + '<span class="sub">' + esc(i.reference || i.description || '') + '</span></td>' +
+          '<td class="mono tiny">' + esc(i.description || 'Assinatura') + '</td>' +
+          '<td>' + chip(i.status) + '</td>' +
+          '<td class="right mono">' + esc(i.amountFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            (i.status === 'OPEN' || i.status === 'OVERDUE' ? '<button class="btn sm primary" data-action="invoice-pay" data-id="' + esc(i.id) + '">Baixar</button>' : '') +
+            (i.status !== 'PAID' ? '<button class="btn sm" data-action="invoice-renew" data-id="' + esc(i.id) + '">Renovar</button>' : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(6, 'Nenhuma fatura', 'As faturas são geradas pelo motor recorrente.');
+  }
+
+  // ── Notas fiscais ─────────────────────────────────────────────────────────
+  async function loadFiscal() {
+    const body = await api('/v1/fiscal/recent');
+    const rows = body.data || [];
+    $('#fiscalTable').innerHTML = rows.length
+      ? rows.map((f) => '<tr>' +
+          '<td class="dim tiny mono">' + esc(fmtDateTime(f.issuedAt)) + '</td>' +
+          '<td><span class="strong mono">' + esc(f.serie + '-' + f.number) + '</span><span class="sub">' + esc(f.method) + '</span></td>' +
+          '<td>' + esc(f.description || 'Venda') + '</td>' +
+          '<td>' + chip(f.status) + '</td>' +
+          '<td class="mono tiny">' + esc(f.accessKey ? f.accessKey.replace(/(\d{4})/g, '$1 ').trim() : '—') + '</td>' +
+          '<td class="right mono">' + esc(money(f.amountCents)) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(6, 'Nenhuma nota emitida', 'A NFC-e é emitida automaticamente após a aprovação da venda.');
+  }
+
+  // ── Extrato ───────────────────────────────────────────────────────────────
+  async function loadStatement(from, to) {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const query = params.toString();
+    const body = await api('/v1/statement' + (query ? '?' + query : ''));
+    const summary = body.summary;
+    $('#stAvailable').textContent = summary.availableFormatted;
+    $('#stReceivable').textContent = summary.receivableFormatted;
+    $('#stInflow').textContent = summary.inflowFormatted;
+    $('#stSettled').textContent = summary.settledFormatted;
+    $('#stOutflow').textContent = summary.outflowFormatted;
+    $('#statementRange').textContent = 'Período de ' + fmtDate(body.period.from) + ' a ' + fmtDate(body.period.to);
+    state.statementRange = { from, to };
+    $('#statementTable').innerHTML = body.entries.length
+      ? body.entries.map((entry) => '<tr>' +
+          '<td class="dim tiny mono">' + esc(fmtDateTime(entry.createdAt)) + '</td>' +
+          '<td><span class="strong">' + esc(entry.description) + '</span><span class="sub">' + esc(entry.memo || '') + '</span></td>' +
+          '<td class="tiny">' + esc(entry.source || entry.method || '—') + '</td>' +
+          '<td class="dim tiny">' + esc(entry.accountKind) + '</td>' +
+          '<td class="right mono" style="color:' + (entry.signedCents < 0 ? 'var(--red)' : 'var(--mint)') + '">' + esc(entry.amountFormatted) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(5, 'Nenhum lançamento no período', 'Ajuste o filtro de datas para consultar outro intervalo.');
+  }
+
+  async function downloadCsv() {
+    try {
+      const params = new URLSearchParams();
+      if (state.statementRange.from) params.set('from', state.statementRange.from);
+      if (state.statementRange.to) params.set('to', state.statementRange.to);
+      const res = await fetch('/v1/statement.csv' + (params.toString() ? '?' + params.toString() : ''), {
+        headers: { Authorization: 'Bearer ' + state.token },
+      });
+      if (!res.ok) throw new Error('Não foi possível gerar o extrato.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'extrato-xpartner.csv';
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast('Extrato exportado', 'ok', 'Arquivo CSV gerado com o período selecionado.');
+    } catch (error) {
+      toast('Falha ao exportar', 'err', error.message);
+    }
+  }
+
+  // ── Liquidações ───────────────────────────────────────────────────────────
+  async function loadSettlements() {
+    const body = await api('/v1/settlements?limit=50');
+    const rows = body.data || [];
+    $('#settlementsTable').innerHTML = rows.length
+      ? rows.map((s) => '<tr>' +
+          '<td class="mono tiny">' + esc(fmtDate(s.scheduledAt)) + '</td>' +
+          '<td>' + esc(s.description || 'Liquidação') + '<span class="sub">' + esc(s.transactionId) + '</span></td>' +
+          '<td>' + esc(methodLabel[s.method] || s.method) + '</td>' +
+          '<td class="tiny">' + esc(s.mode) + '</td>' +
+          '<td>' + chip(s.status) + '</td>' +
+          '<td class="right mono">' + esc(s.grossFormatted) + '</td>' +
+          '<td class="right mono dim">' + esc(s.feeFormatted) + '</td>' +
+          '<td class="right mono">' + esc(s.netFormatted) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(8, 'Sem liquidações', 'A agenda é criada a partir das vendas aprovadas.');
+  }
+
+  // ── Risco ─────────────────────────────────────────────────────────────────
+  async function loadRisk() {
+    const body = await api('/v1/risk/overview');
+    const graph = body.graph || {};
+    $('#riskNodes').textContent = graph.nodes ?? 0;
+    $('#riskEdges').textContent = graph.edges ?? 0;
+    $('#riskFlagged').textContent = graph.flagged ?? 0;
+    $('#riskFanout').textContent = graph.highFanoutCards ?? 0;
+    const rows = body.declined || [];
+    $('#riskTable').innerHTML = rows.length
+      ? rows.map((d) => '<tr>' +
+          '<td class="dim tiny mono">' + esc(fmtDateTime(d.createdAt)) + '</td>' +
+          '<td class="mono tiny">' + esc(d.id) + '</td>' +
+          '<td>' + esc(d.riskScore) + '</td>' +
+          '<td>' + esc(d.failureReason || (Array.isArray(d.reasons) ? d.reasons.join(', ') : '—')) + '</td>' +
+          '<td class="right mono">' + esc(d.amountFormatted) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(5, 'Nenhuma negativa recente', 'A política de risco não recusou transações.');
+  }
+
+  // ── Tokenização ───────────────────────────────────────────────────────────
+  async function loadTokenization() {
+    const [overview, assetsBody] = await Promise.all([
+      api('/v1/tokenization/overview'),
+      api('/v1/tokenization/assets?limit=20'),
+    ]);
+    const assets = overview.assets || {};
+    $('#tkAssets').textContent = assets.count ?? 0;
+    $('#tkSupply').textContent = Number(assets.supplyUnits || 0).toLocaleString('pt-BR') + ' un.';
+    $('#tkReserve').textContent = assets.reserveFormatted || money(assets.reserveCents || 0);
+    $('#tkAnchor').textContent = overview.anchors ? '#' + (overview.anchors.height ?? '—') : '—';
+    const list = assetsBody.data || [];
+    $('#tkList').innerHTML = list.length
+      ? list.slice(0, 6).map((asset) => '<div class="list-item">' +
+          '<div class="li-main"><b>' + esc(asset.name) + ' · ' + esc(asset.symbol) + '</b><small>' + esc(asset.kind) + ' · ' + esc(asset.status || 'ativo') + '</small></div>' +
+          '<div class="li-side"><span class="li-value">' + esc(money(asset.reserveCents || 0)) + '</span><span class="chip ok">' + esc(asset.supplyUnits ?? 0) + ' un.</span></div>' +
+        '</div>').join('')
+      : '<div class="empty"><b>Nenhum ativo tokenizado</b>Abra o painel de tokenização para criar o primeiro ativo.</div>';
+  }
+
+  function fillSelect(selector, options, placeholder) {
+    const node = $(selector);
+    if (!node) return;
+    const previous = node.value;
+    node.innerHTML = (placeholder ? '<option value="">' + esc(placeholder) + '</option>' : '') +
+      options.map((option) => '<option value="' + esc(option.value) + '">' + esc(option.label) + '</option>').join('');
+    if (previous) node.value = previous;
+  }
+
+  // ── Open Finance ──────────────────────────────────────────────────────────
+  async function loadOpenFinance() {
+    const body = await api('/v1/open-finance/overview');
+    state.openfinance = body;
+    const kpis = body.kpis;
+    $('#ofConsents').textContent = kpis.activeConsents;
+    $('#ofAccounts').textContent = kpis.activeAccounts;
+    $('#ofScheduled').textContent = kpis.scheduledDebitsFormatted;
+    $('#ofPayments').textContent = kpis.monthPaymentsFormatted;
+    $('#ofPaymentsSub').innerHTML = 'tarifas <b>' + esc(kpis.monthFeesFormatted) + '</b> · débitos <b>' + esc(kpis.monthDebitsFormatted) + '</b>';
+
+    const consents = body.consents || [];
+    $('#ofConsentsTable').innerHTML = consents.length
+      ? consents.map((c) => '<tr>' +
+          '<td><span class="strong">' + esc(c.provider) + '</span><span class="sub mono">' + esc(c.providerCode) + '</span></td>' +
+          '<td>' + esc(consentKindLabel[c.kind] || c.kind) + '</td>' +
+          '<td>' + (c.account
+            ? esc(accountTypeLabel[c.account.accountType] || c.account.accountType) + '<span class="sub mono">' + esc(c.account.numberMasked) + '</span>'
+            : '—') + '</td>' +
+          '<td class="mono tiny">' + esc(fmtDate(c.expiresAt)) + '</td>' +
+          '<td>' + chip(c.status) + '</td>' +
+          '<td><div class="row-actions">' +
+            (c.status === 'AWAITING_AUTHORISATION'
+              ? '<button class="btn sm primary" data-action="of-consent-authorize" data-id="' + esc(c.id) + '">Autorizar</button>' +
+                '<button class="btn sm danger" data-action="of-consent-reject" data-id="' + esc(c.id) + '">Recusar</button>'
+              : '') +
+            (c.status === 'AUTHORISED'
+              ? '<button class="btn sm danger" data-action="of-consent-revoke" data-id="' + esc(c.id) + '">Revogar</button>'
+              : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(6, 'Nenhum consentimento', 'Solicite o primeiro consentimento ao lado.');
+
+    const debitConsents = consents.filter((c) => c.kind === 'EXTERNAL_DEBIT' && c.status === 'AUTHORISED');
+    fillSelect(
+      '#ofDebitConsent',
+      debitConsents.map((c) => ({ value: c.id, label: c.provider + ' · ' + (c.account ? c.account.numberMasked : '') })),
+      'Selecione um consentimento',
+    );
+    const paymentConsents = consents.filter((c) => c.kind === 'PAYMENT_INITIATION' && c.status === 'AUTHORISED');
+    fillSelect(
+      '#ofPaymentConsent',
+      paymentConsents.map((c) => ({ value: c.id, label: c.provider + ' · ' + (c.account ? c.account.numberMasked : '') })),
+      'Selecione um consentimento',
+    );
+
+    const debits = body.debits || [];
+    $('#ofDebitsTable').innerHTML = debits.length
+      ? debits.map((d) => '<tr>' +
+          '<td><span class="strong">' + esc(d.description || 'Débito externo') + '</span></td>' +
+          '<td>' + esc(d.provider || '—') + '</td>' +
+          '<td class="mono tiny">' + esc(fmtDate(d.dueDate + 'T12:00:00Z')) + '</td>' +
+          '<td>' + chip(d.status) + '</td>' +
+          '<td class="right mono">' + esc(d.amountFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            (d.status === 'SCHEDULED'
+              ? '<button class="btn sm primary" data-action="of-debit-settle" data-id="' + esc(d.id) + '">Liquidar</button>' +
+                '<button class="btn sm danger" data-action="of-debit-cancel" data-id="' + esc(d.id) + '">Cancelar</button>'
+              : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(6, 'Nenhum débito externo', 'Agende uma cobrança em conta vinculada.');
+
+    const payments = body.payments || [];
+    $('#ofPaymentsTable').innerHTML = payments.length
+      ? payments.map((p) => '<tr>' +
+          '<td><span class="strong">' + esc(p.description || 'Pagamento') + '</span><span class="sub">' + esc(fmtDateTime(p.createdAt)) + '</span></td>' +
+          '<td class="mono tiny">' + esc(p.pixKey) + '</td>' +
+          '<td>' + chip(p.status) + '</td>' +
+          '<td class="right mono">' + esc(p.totalFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            (p.status === 'PENDING'
+              ? '<button class="btn sm primary" data-action="of-payment-settle" data-id="' + esc(p.id) + '">Liquidar</button>' +
+                '<button class="btn sm danger" data-action="of-payment-cancel" data-id="' + esc(p.id) + '">Cancelar</button>'
+              : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(5, 'Nenhum pagamento iniciado', 'Inicie uma saída Pix com consentimento autorizado.');
+  }
+
+  // ── Investimentos ─────────────────────────────────────────────────────────
+  function updateInvestHint() {
+    const hint = $('#investHint');
+    const select = $('#investProduct');
+    if (!hint || !select || !state.investments) return;
+    const product = (state.investments.products || []).find((p) => p.id === select.value);
+    hint.textContent = product
+      ? 'Mínimo ' + product.minFormatted + ' · ' + (indexerLabel[product.indexer] || product.indexer) + ' ' +
+        String(product.ratePercent).replace('.', ',') + '% · liquidez ' + (liquidityLabel[product.liquidity] || product.liquidity)
+      : 'Escolha um produto para ver o mínimo e a liquidez.';
+  }
+
+  async function loadInvestments() {
+    const body = await api('/v1/investments/overview');
+    state.investments = body;
+    const kpis = body.kpis;
+    $('#invInvested').textContent = kpis.investedFormatted;
+    $('#invAvailableSub').innerHTML = 'disponível <b>' + esc(kpis.availableFormatted) + '</b>';
+    $('#invPositions').textContent = kpis.activePositions;
+    $('#invProventos').textContent = kpis.proventosFormatted;
+    $('#invScheduledSub').innerHTML = 'a pagar <b>' + esc(kpis.scheduledFormatted) + '</b>';
+    $('#invTax').textContent = kpis.taxFormatted;
+
+    const positions = body.positions || [];
+    $('#invPositionsTable').innerHTML = positions.length
+      ? positions.map((p) => '<tr>' +
+          '<td><span class="strong">' + esc(p.productName) + '</span><span class="sub">' + esc(p.kind) + ' · ' + esc(p.issuer) + '</span></td>' +
+          '<td>' + esc(indexerLabel[p.indexer] || p.indexer || '—') +
+            (p.rateBps != null ? '<span class="sub mono">' + String(p.rateBps / 100).replace('.', ',') + '%</span>' : '') + '</td>' +
+          '<td>' + esc(liquidityLabel[p.liquidity] || p.liquidity || '—') + '</td>' +
+          '<td class="mono tiny">' + esc(p.redeemableAt ? fmtDate(p.redeemableAt) : '—') + '</td>' +
+          '<td>' + chip(p.status) + '</td>' +
+          '<td class="right mono">' + esc(p.principalFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            (p.status === 'ACTIVE'
+              ? '<button class="btn sm primary" data-action="position-redeem-open" data-id="' + esc(p.id) + '">Resgatar</button>'
+              : '') +
+          '</div></td>' +
+        '</tr>').join('')
+      : emptyRow(7, 'Nenhuma posição', 'Aplique no primeiro produto ao lado.');
+
+    const proventos = body.proventos || [];
+    $('#invProventosTable').innerHTML = proventos.length
+      ? proventos.map((v) => '<tr>' +
+          '<td>' + esc(v.productName || '—') + '</td>' +
+          '<td>' + esc(proventoKindLabel[v.kind] || v.kind) + '</td>' +
+          '<td class="mono tiny">' + esc(fmtDate(v.paymentDate + 'T12:00:00Z')) + '</td>' +
+          '<td>' + chip(v.status) + '</td>' +
+          '<td class="right mono">' + esc(v.grossFormatted) + '</td>' +
+          '<td class="right mono">' + esc(v.taxFormatted) + '</td>' +
+          '<td class="right mono">' + esc(v.netFormatted) + '</td>' +
+        '</tr>').join('')
+      : emptyRow(7, 'Nenhum provento', 'Agende dividendos, JCP ou rendimentos.');
+
+    const products = body.products || [];
+    fillSelect(
+      '#investProduct',
+      products.map((p) => ({ value: p.id, label: p.name + ' · mín. ' + p.minFormatted })),
+      'Selecione um produto',
+    );
+    fillSelect(
+      '#proventoPosition',
+      positions.filter((p) => p.status === 'ACTIVE').map((p) => ({
+        value: p.id,
+        label: (p.productName || 'Posição') + ' · ' + p.principalFormatted,
+      })),
+      'Selecione uma posição',
+    );
+    updateInvestHint();
+
+    $('#invProductsList').innerHTML = products.length
+      ? products.map((p) => '<div class="list-item">' +
+          '<div class="li-main"><b>' + esc(p.name) + '</b><small>' + esc(p.kind) + ' · ' + esc(p.issuer) + ' · ' +
+            esc(indexerLabel[p.indexer] || p.indexer) + ' ' + String(p.ratePercent).replace('.', ',') + '%' +
+            (p.maturityDate ? ' · vence ' + esc(fmtDate(p.maturityDate + 'T12:00:00Z')) : '') + '</small></div>' +
+          '<div class="li-side"><span class="li-value">' + esc(p.minFormatted) + '</span>' +
+            '<span class="chip info">' + esc(liquidityLabel[p.liquidity] || p.liquidity) + '</span>' +
+            (p.taxExempt ? '<span class="chip ok">Isento de IR</span>' : '') + '</div>' +
+        '</div>').join('')
+      : '<div class="empty"><b>Nenhum produto disponível</b>Cadastre produtos de investimento no servidor.</div>';
+  }
+
+  function openRedeem(position) {
+    openModal('Resgatar · ' + (position.productName || 'Investimento'), 'Saldo aplicado ' + position.principalFormatted, '' +
+      '<label class="field"><span>Valor do resgate (R$)</span>' +
+        '<input id="redeemAmount" inputmode="decimal" placeholder="' + esc(String(position.principalCents / 100).replace('.', ',')) + '" /></label>' +
+      '<p class="tiny dim" style="margin:0">Deixe em branco para resgatar o saldo total. Liquidez: ' +
+        esc(liquidityLabel[position.liquidity] || position.liquidity || '—') + '.</p>' +
+      '<div class="form-foot">' +
+        '<button class="btn primary" data-action="position-redeem" data-id="' + esc(position.id) + '" data-max="' + position.principalCents + '">Confirmar resgate</button>' +
+        '<button class="btn" data-close="1">Fechar</button>' +
+      '</div>');
+  }
+
+  // ── Router ────────────────────────────────────────────────────────────────
+  const loaders = {
+    overview: loadOverview,
+    sales: loadSales,
+    charges: async () => { await loadCharges(); },
+    subscriptions: loadSubscriptions,
+    customers: async () => { await loadCustomers(); },
+    fiscal: loadFiscal,
+    statement: () => loadStatement(state.statementRange.from, state.statementRange.to),
+    settlements: loadSettlements,
+    risk: loadRisk,
+    openfinance: loadOpenFinance,
+    investments: loadInvestments,
+    tokenization: loadTokenization,
+  };
+
+  async function go(route, historyMode = 'push') {
+    if (!ROUTES[route]) route = 'overview';
+    state.route = route;
+    $$('.view').forEach((view) => view.classList.toggle('active', view.dataset.view === route));
+    $$('.side-nav button[data-route]').forEach((btn) => btn.classList.toggle('active', btn.dataset.route === route));
+    const [section, title] = ROUTES[route];
+    $('#crumbSection').textContent = section;
+    $('#crumbTitle').textContent = title;
+    if (location.hash !== '#' + route) {
+      if (historyMode === 'replace') history.replaceState(null, '', '#' + route);
+      else history.pushState(null, '', '#' + route);
+    }
+    try {
+      await loaders[route]();
+      state.loaded.add(route);
+    } catch (error) {
+      toast('Falha ao carregar ' + title, 'err', error.message);
+    }
+  }
+
+  function paintWorkspace(merchant) {
+    if (!merchant) return;
+    const initials = (merchant.tradeName || merchant.name || 'XP').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+    $('#wsAvatar').textContent = initials;
+    $('#topAvatar').textContent = initials;
+    $('#wsName').textContent = merchant.tradeName || merchant.name;
+    $('#wsMeta').textContent = (merchant.id || '') + ' · ' + (merchant.city || '') + '/' + (merchant.uf || '');
+    $('#topEmail').textContent = (merchant.document ? 'CNPJ ' + merchant.document : 'ambiente demo');
+  }
+
+  // ── Modais ────────────────────────────────────────────────────────────────
+  function openModal(title, subtitle, html) {
+    $('#modalTitle').textContent = title;
+    $('#modalSub').textContent = subtitle || '';
+    $('#modalBody').innerHTML = html;
+    $('#modal').classList.add('open');
+    $('#overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    $('#modal').classList.remove('open');
+    $('#overlay').classList.remove('open');
+  }
+
+  function codeBox(text, label) {
+    return '<div class="code-box"><code>' + esc(text) + '</code><button class="btn sm" data-copy="' + esc(text) + '">Copiar</button></div>' +
+      (label ? '<p class="copy-note">' + esc(label) + '</p>' : '');
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Copiado para a área de transferência');
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+      toast('Copiado');
+    }
+  }
+
+  function openBoleto(boleto) {
+    openModal('Boleto ' + boleto.ourNumber, boleto.description, '' +
+      '<dl class="kv">' +
+        '<dt>Pagador</dt><dd>' + esc(boleto.payerName) + '<br><span class="dim mono">' + esc(boleto.payerDocumentMasked) + '</span></dd>' +
+        '<dt>Valor</dt><dd class="mono">' + esc(boleto.amountFormatted) + '</dd>' +
+        '<dt>Vencimento</dt><dd>' + esc(fmtDate(boleto.dueDate + 'T12:00:00Z')) + '</dd>' +
+        '<dt>Status</dt><dd>' + chip(boleto.status) + '</dd>' +
+        '<dt>Código de barras</dt><dd class="mono tiny">' + esc(boleto.barcode) + '</dd>' +
+      '</dl>' +
+      '<p class="tiny dim" style="margin:0 0 7px">Linha digitável</p>' +
+      codeBox(boleto.digitableLineFormatted, 'Válida para pagamento em qualquer banco até o vencimento.') +
+      '<div class="form-foot">' +
+        (boleto.status === 'OPEN' || boleto.status === 'OVERDUE' ? '<button class="btn primary" data-action="boleto-pay" data-id="' + esc(boleto.id) + '">Dar baixa (demo)</button>' : '') +
+        '<button class="btn" data-close="1">Fechar</button>' +
+      '</div>');
+  }
+
+  function openLink(link) {
+    const url = location.origin + '/pay/' + link.code;
+    openModal('Link ' + link.code, link.description || 'Link de pagamento', '' +
+      '<dl class="kv">' +
+        '<dt>Tipo</dt><dd>' + esc(link.kind === 'PIX' ? 'Pix' : 'Boleto') + '</dd>' +
+        '<dt>Valor</dt><dd class="mono">' + esc(link.amountFormatted) + '</dd>' +
+        '<dt>Status</dt><dd>' + chip(link.status) + '</dd>' +
+        '<dt>Criado em</dt><dd>' + esc(fmtDateTime(link.createdAt)) + '</dd>' +
+      '</dl>' +
+      '<p class="tiny dim" style="margin:0 0 7px">Endereço público do checkout</p>' +
+      codeBox(url, 'Compartilhe com o pagador. O status é confirmado automaticamente.') +
+      '<div class="form-foot"><a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener">Abrir checkout</a>' +
+        (link.status === 'ACTIVE' ? '<button class="btn primary" data-action="link-pay" data-code="' + esc(link.code) + '">Dar baixa (demo)</button>' : '') +
+        '<button class="btn" data-close="1">Fechar</button></div>');
+  }
+
+  function openPix(charge) {
+    openModal('Cobrança Pix', charge.amountFormatted, '' +
+      '<dl class="kv">' +
+        '<dt>TxID</dt><dd class="mono">' + esc(charge.txid) + '</dd>' +
+        '<dt>Status</dt><dd>' + chip(charge.status) + '</dd>' +
+        '<dt>Expira em</dt><dd>' + esc(fmtDateTime(charge.expiresAt)) + '</dd>' +
+      '</dl>' +
+      '<p class="tiny dim" style="margin:0 0 7px">BR Code (copia e cola)</p>' +
+      codeBox(charge.emvPayload, 'Cole no aplicativo do seu banco para concluir o pagamento.') +
+      '<div class="form-foot">' +
+        (charge.status === 'PENDING' ? '<button class="btn primary" data-action="pix-pay" data-txid="' + esc(charge.txid) + '">Dar baixa (demo)</button>' : '') +
+        '<button class="btn" data-close="1">Fechar</button></div>');
+  }
+
+  async function openSubscription(id) {
+    try {
+      const sub = await api('/v1/subscriptions/' + encodeURIComponent(id));
+      const invoices = (sub.invoices || []).map((i) => '<tr>' +
+          '<td class="mono tiny">' + esc(fmtDate(i.dueDate + 'T12:00:00Z')) + '</td>' +
+          '<td>' + chip(i.status) + '</td>' +
+          '<td class="right mono">' + esc(i.amountFormatted) + '</td>' +
+          '<td><div class="row-actions">' +
+            (i.status === 'OPEN' || i.status === 'OVERDUE' ? '<button class="btn sm primary" data-action="invoice-pay" data-id="' + esc(i.id) + '">Baixar</button>' : '') +
+            (i.status !== 'PAID' ? '<button class="btn sm" data-action="invoice-renew" data-id="' + esc(i.id) + '">Renovar</button>' : '') +
+          '</div></td>' +
+        '</tr>').join('');
+      openModal('Assinatura de ' + sub.customerName, sub.description, '' +
+        '<dl class="kv">' +
+          '<dt>Valor</dt><dd class="mono">' + esc(sub.amountFormatted) + '</dd>' +
+          '<dt>Periodicidade</dt><dd>' + esc({ WEEKLY: 'Semanal', MONTHLY: 'Mensal', QUARTERLY: 'Trimestral', YEARLY: 'Anual' }[sub.period] || sub.period) + '</dd>' +
+          '<dt>Meio</dt><dd>' + esc(sub.method === 'PIX' ? 'Pix' : 'Boleto') + '</dd>' +
+          '<dt>Próxima cobrança</dt><dd>' + esc(fmtDate(sub.nextDueDate + 'T12:00:00Z')) + '</dd>' +
+          '<dt>Status</dt><dd>' + chip(sub.status) + '</dd>' +
+        '</dl>' +
+        '<div class="table-wrap"><table><thead><tr><th>Vencimento</th><th>Status</th><th class="right">Valor</th><th></th></tr></thead><tbody>' +
+        (invoices || '<tr><td colspan="4"><div class="empty">Sem faturas.</div></td></tr>') +
+        '</tbody></table></div>' +
+        '<div class="form-foot">' +
+          (sub.status === 'ACTIVE' ? '<button class="btn" data-action="sub-pause" data-id="' + esc(sub.id) + '">Pausar</button>' : '') +
+          (sub.status === 'PAUSED' ? '<button class="btn primary" data-action="sub-resume" data-id="' + esc(sub.id) + '">Retomar</button>' : '') +
+          (sub.status !== 'CANCELED' ? '<button class="btn danger" data-action="sub-cancel" data-id="' + esc(sub.id) + '">Cancelar assinatura</button>' : '') +
+          '<button class="btn" data-close="1">Fechar</button>' +
+        '</div>');
+    } catch (error) {
+      toast('Falha ao abrir assinatura', 'err', error.message);
+    }
+  }
+
+  // ── Ações ─────────────────────────────────────────────────────────────────
+  document.addEventListener('click', async (event) => {
+    const copyBtn = event.target.closest('[data-copy]');
+    if (copyBtn) {
+      event.preventDefault();
+      await copyText(copyBtn.dataset.copy);
+      return;
+    }
+    const closeBtn = event.target.closest('[data-close]');
+    if (closeBtn) { closeModal(); return; }
+    const routeBtn = event.target.closest('[data-route], [data-route-link]');
+    if (routeBtn) {
+      event.preventDefault();
+      closeModal();
+      await go(routeBtn.dataset.route || routeBtn.dataset.routeLink);
+      return;
+    }
+    const action = event.target.closest('[data-action]');
+    if (!action) return;
+    const { action: name, id, code, txid } = action.dataset;
+    action.disabled = true;
+    try {
+      if (name === 'boleto-view') {
+        const detail = await api('/v1/boletos/' + encodeURIComponent(id));
+        openBoleto(detail.boleto || detail);
+      } else if (name === 'boleto-pay') {
+        await api('/v1/boletos/' + encodeURIComponent(id) + '/pay', { method: 'POST' });
+        toast('Boleto baixado', 'ok', 'Recebível liquidado e nota fiscal enfileirada.');
+        closeModal();
+        await go(state.route);
+      } else if (name === 'boleto-cancel') {
+        await api('/v1/boletos/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
+        toast('Boleto cancelado');
+        await go(state.route);
+      } else if (name === 'link-open') {
+        const detail = await api('/v1/payment-links/' + encodeURIComponent(code));
+        openLink(detail.link || detail);
+      } else if (name === 'link-copy') {
+        await copyText(location.origin + '/pay/' + code);
+      } else if (name === 'link-pay') {
+        await api('/v1/payment-links/' + encodeURIComponent(code) + '/pay', { method: 'POST' });
+        toast('Link baixado', 'ok', 'Pagamento conciliado com sucesso.');
+        closeModal();
+        await go(state.route);
+      } else if (name === 'link-cancel') {
+        await api('/v1/payment-links/' + encodeURIComponent(code) + '/cancel', { method: 'POST' });
+        toast('Link cancelado');
+        await go(state.route);
+      } else if (name === 'pix-view') {
+        const detail = await api('/v1/pix/charges/' + encodeURIComponent(txid));
+        openPix(detail.charge || detail);
+      } else if (name === 'pix-pay') {
+        await api('/v1/pix/charges/' + encodeURIComponent(txid) + '/simulate-payment', { method: 'POST' });
+        toast('Pix recebido', 'ok', 'Baixa automática confirmada.');
+        closeModal();
+        await go(state.route);
+      } else if (name === 'sub-pause') {
+        await api('/v1/subscriptions/' + encodeURIComponent(id) + '/pause', { method: 'POST' });
+        toast('Assinatura pausada');
+        await go(state.route);
+      } else if (name === 'sub-resume') {
+        await api('/v1/subscriptions/' + encodeURIComponent(id) + '/resume', { method: 'POST' });
+        toast('Assinatura retomada');
+        await go(state.route);
+      } else if (name === 'sub-cancel') {
+        await api('/v1/subscriptions/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
+        toast('Assinatura cancelada');
+        await go(state.route);
+      } else if (name === 'invoice-pay') {
+        await api('/v1/subscription-invoices/' + encodeURIComponent(id) + '/pay', { method: 'POST' });
+        toast('Fatura baixada', 'ok', 'Recebimento registrado.');
+        closeModal();
+        await go(state.route);
+      } else if (name === 'invoice-renew') {
+        await api('/v1/subscription-invoices/' + encodeURIComponent(id) + '/renew', { method: 'POST' });
+        toast('Nova cobrança gerada');
+        closeModal();
+        await go(state.route);
+      } else if (name === 'sub-view') {
+        await openSubscription(id);
+      } else if (name === 'of-consent-authorize') {
+        await api('/v1/open-finance/consents/' + encodeURIComponent(id) + '/authorize', { method: 'POST' });
+        toast('Consentimento autorizado', 'ok', 'Conta vinculada habilitada.');
+        await loadOpenFinance();
+      } else if (name === 'of-consent-reject') {
+        await api('/v1/open-finance/consents/' + encodeURIComponent(id) + '/reject', {
+          method: 'POST',
+          payload: { reason: 'Recusado pelo estabelecimento' },
+        });
+        toast('Consentimento recusado');
+        await loadOpenFinance();
+      } else if (name === 'of-consent-revoke') {
+        await api('/v1/open-finance/consents/' + encodeURIComponent(id) + '/revoke', {
+          method: 'POST',
+          payload: { reason: 'Revogado pelo estabelecimento' },
+        });
+        toast('Consentimento revogado', 'ok', 'Débitos e pagamentos pendentes foram cancelados.');
+        await loadOpenFinance();
+      } else if (name === 'of-debit-settle') {
+        await api('/v1/open-finance/debits/' + encodeURIComponent(id) + '/settle', { method: 'POST' });
+        toast('Débito liquidado', 'ok', 'Recebível conciliado e nota fiscal enfileirada.');
+        await loadOpenFinance();
+        if (state.loaded.has('overview')) loadOverview().catch(() => {});
+      } else if (name === 'of-debit-cancel') {
+        await api('/v1/open-finance/debits/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
+        toast('Débito cancelado');
+        await loadOpenFinance();
+      } else if (name === 'of-payment-settle') {
+        await api('/v1/open-finance/payments/' + encodeURIComponent(id) + '/settle', { method: 'POST' });
+        toast('Pagamento liquidado', 'ok', 'Saldo e tarifa lançados no extrato.');
+        await loadOpenFinance();
+        if (state.loaded.has('overview')) loadOverview().catch(() => {});
+      } else if (name === 'of-payment-cancel') {
+        await api('/v1/open-finance/payments/' + encodeURIComponent(id) + '/cancel', { method: 'POST' });
+        toast('Pagamento cancelado');
+        await loadOpenFinance();
+      } else if (name === 'position-redeem-open') {
+        const position = ((state.investments && state.investments.positions) || []).find((item) => item.id === id);
+        if (position) openRedeem(position);
+      } else if (name === 'position-redeem') {
+        const field = $('#redeemAmount');
+        const typed = field ? String(field.value || '').trim() : '';
+        const amountCents = typed ? toCents(typed) : Number(action.dataset.max);
+        if (!amountCents) return toast('Informe um valor válido', 'warn');
+        await api('/v1/investments/redemptions', {
+          method: 'POST',
+          payload: { positionId: id, amountCents },
+        });
+        toast('Resgate concluído', 'ok', money(amountCents) + ' creditado no saldo disponível.');
+        closeModal();
+        await loadInvestments();
+        if (state.loaded.has('overview')) loadOverview().catch(() => {});
+      }
+    } catch (error) {
+      toast('Operação não concluída', 'err', error.message);
+    } finally {
+      action.disabled = false;
+    }
+  });
+
+  $('#overlay').addEventListener('click', closeModal);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModal(); });
+
+  $$('.tabs button').forEach((button) => button.addEventListener('click', () => {
+    $$('.tabs button').forEach((b) => b.classList.toggle('active', b === button));
+    $$('.pane').forEach((pane) => pane.classList.toggle('active', pane.dataset.paneView === button.dataset.pane));
+    state.chargesPane = button.dataset.pane;
+  }));
+
+  // ── Formulários ───────────────────────────────────────────────────────────
+  $('#boletoForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const amountCents = toCents(data.get('amount'));
+    if (!amountCents) return toast('Informe um valor válido', 'warn');
+    try {
+      const created = await api('/v1/boletos', {
+        method: 'POST',
+        payload: {
+          amountCents,
+          dueDate: data.get('dueDate'),
+          description: String(data.get('description') || '').trim() || undefined,
+          customerId: String(data.get('customerId') || '') || undefined,
+          payerName: String(data.get('payerName') || '').trim() || undefined,
+          payerDocument: String(data.get('payerDocument') || '').trim() || undefined,
+        },
+      });
+      event.target.reset();
+      event.target.dueDate.value = todayInput();
+      toast('Boleto emitido', 'ok', created.boleto.ourNumber + ' · ' + created.boleto.amountFormatted);
+      openBoleto(created.boleto);
+      await loadCharges();
+      if (state.loaded.has('overview')) loadOverview().catch(() => {});
+    } catch (error) {
+      toast('Não foi possível emitir o boleto', 'err', error.message);
+    }
+  });
+
+  $('#linkDueField').style.display = 'none';
+  $('#linkForm').querySelector('select[name="kind"]').addEventListener('change', (event) => {
+    $('#linkDueField').style.display = event.target.value === 'BOLETO' ? '' : 'none';
+  });
+
+  $('#linkForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const amountCents = toCents(data.get('amount'));
+    if (!amountCents) return toast('Informe um valor válido', 'warn');
+    try {
+      const created = await api('/v1/payment-links', {
+        method: 'POST',
+        payload: {
+          amountCents,
+          kind: data.get('kind'),
+          description: String(data.get('description') || '').trim() || undefined,
+          customerId: String(data.get('customerId') || '') || undefined,
+          dueDate: data.get('kind') === 'BOLETO' ? String(data.get('dueDate') || '') || undefined : undefined,
+        },
+      });
+      event.target.reset();
+      $('#linkDueField').style.display = 'none';
+      toast('Link criado', 'ok', created.link.code);
+      openLink(created.link);
+      await loadCharges();
+    } catch (error) {
+      toast('Não foi possível criar o link', 'err', error.message);
+    }
+  });
+
+  $('#pixForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const amountCents = toCents(data.get('amount'));
+    if (!amountCents) return toast('Informe um valor válido', 'warn');
+    try {
+      const created = await api('/v1/pix/charges', {
+        method: 'POST',
+        payload: { amountCents, description: String(data.get('description') || '').trim() || undefined, terminalId: state.terminalId },
+      });
+      event.target.reset();
+      toast('Cobrança Pix gerada', 'ok', created.charge.txid);
+      openPix(created.charge);
+      await loadCharges();
+    } catch (error) {
+      toast('Não foi possível gerar o Pix', 'err', error.message);
+    }
+  });
+
+  $('#subForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const amountCents = toCents(data.get('amount'));
+    if (!amountCents) return toast('Informe um valor válido', 'warn');
+    if (!data.get('customerId')) return toast('Selecione um cliente', 'warn');
+    try {
+      const created = await api('/v1/subscriptions', {
+        method: 'POST',
+        payload: {
+          customerId: data.get('customerId'),
+          description: data.get('description'),
+          amountCents,
+          period: data.get('period'),
+          method: data.get('method'),
+        },
+      });
+      event.target.reset();
+      toast('Assinatura criada', 'ok', 'Primeira fatura gerada automaticamente.');
+      await loadSubscriptions();
+      if (created && created.id) openSubscription(created.id);
+    } catch (error) {
+      toast('Não foi possível criar a assinatura', 'err', error.message);
+    }
+  });
+
+  $('#customerForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    try {
+      const created = await api('/v1/customers', {
+        method: 'POST',
+        payload: {
+          name: String(data.get('name') || '').trim(),
+          document: onlyDigits(data.get('document') || ''),
+          email: String(data.get('email') || '').trim() || undefined,
+          phone: onlyDigits(data.get('phone') || '') || undefined,
+          city: String(data.get('city') || '').trim() || undefined,
+          uf: String(data.get('uf') || '').trim().toUpperCase() || undefined,
+        },
+      });
+      event.target.reset();
+      toast('Cliente cadastrado', 'ok', created.customer.name);
+      await loadCustomers();
+    } catch (error) {
+      toast('Não foi possível cadastrar', 'err', error.message);
+    }
+  });
+
+  $('#statementForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    try {
+      await loadStatement(String(data.get('from') || ''), String(data.get('to') || ''));
+    } catch (error) {
+      toast('Falha ao filtrar extrato', 'err', error.message);
+    }
+  });
+
+  $('#ofConsentForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    if (!data.get('customerId')) return toast('Selecione o titular', 'warn');
+    const balance = String(data.get('balance') || '').trim();
+    try {
+      await api('/v1/open-finance/consents', {
+        method: 'POST',
+        payload: {
+          provider: String(data.get('provider') || '').trim(),
+          providerCode: String(data.get('providerCode') || '').trim().toUpperCase(),
+          kind: data.get('kind'),
+          customerId: data.get('customerId'),
+          account: {
+            type: data.get('accountType'),
+            branch: onlyDigits(data.get('branch')),
+            number: onlyDigits(data.get('number')),
+            ...(balance ? { balanceCents: toCents(balance) } : {}),
+          },
+        },
+      });
+      event.target.reset();
+      toast('Consentimento solicitado', 'ok', 'Aguardando autorização do titular.');
+      await loadOpenFinance();
+    } catch (error) {
+      toast('Não foi possível solicitar o consentimento', 'err', error.message);
+    }
+  });
+
+  $('#ofDebitForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const amountCents = toCents(data.get('amount'));
+    if (!data.get('consentId')) return toast('Selecione um consentimento autorizado', 'warn');
+    if (!amountCents) return toast('Informe um valor válido', 'warn');
+    try {
+      await api('/v1/open-finance/debits', {
+        method: 'POST',
+        payload: {
+          consentId: data.get('consentId'),
+          amountCents,
+          dueDate: data.get('dueDate'),
+          description: String(data.get('description') || '').trim() || undefined,
+        },
+      });
+      event.target.reset();
+      toast('Débito agendado', 'ok', 'A cobrança será conciliada na data de vencimento.');
+      await loadOpenFinance();
+    } catch (error) {
+      toast('Não foi possível agendar o débito', 'err', error.message);
+    }
+  });
+
+  $('#ofPaymentForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const amountCents = toCents(data.get('amount'));
+    if (!data.get('consentId')) return toast('Selecione um consentimento autorizado', 'warn');
+    if (!amountCents) return toast('Informe um valor válido', 'warn');
+    try {
+      await api('/v1/open-finance/payments', {
+        method: 'POST',
+        payload: {
+          consentId: data.get('consentId'),
+          amountCents,
+          pixKey: String(data.get('pixKey') || '').trim(),
+          description: String(data.get('description') || '').trim() || undefined,
+        },
+      });
+      event.target.reset();
+      toast('Pagamento iniciado', 'ok', 'Liquide para debitar o saldo disponível.');
+      await loadOpenFinance();
+    } catch (error) {
+      toast('Não foi possível iniciar o pagamento', 'err', error.message);
+    }
+  });
+
+  $('#investProduct').addEventListener('change', updateInvestHint);
+
+  $('#investForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const amountCents = toCents(data.get('amount'));
+    if (!data.get('productId')) return toast('Selecione um produto', 'warn');
+    if (!amountCents) return toast('Informe um valor válido', 'warn');
+    try {
+      const created = await api('/v1/investments/contributions', {
+        method: 'POST',
+        payload: { productId: data.get('productId'), amountCents },
+      });
+      event.target.reset();
+      updateInvestHint();
+      toast('Aporte confirmado', 'ok', created.position.productName + ' · ' + created.position.principalFormatted);
+      await loadInvestments();
+      if (state.loaded.has('overview')) loadOverview().catch(() => {});
+    } catch (error) {
+      toast('Não foi possível aplicar', 'err', error.message);
+    }
+  });
+
+  $('#proventoForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const grossCents = toCents(data.get('gross'));
+    if (!data.get('positionId')) return toast('Selecione uma posição ativa', 'warn');
+    if (!grossCents) return toast('Informe um valor válido', 'warn');
+    try {
+      const created = await api('/v1/investments/proventos', {
+        method: 'POST',
+        payload: {
+          positionId: data.get('positionId'),
+          kind: data.get('kind'),
+          grossCents,
+          exDate: data.get('exDate'),
+          paymentDate: data.get('paymentDate'),
+        },
+      });
+      event.target.reset();
+      toast('Provento agendado', 'ok', 'Líquido ' + created.provento.netFormatted + ' · IR ' + created.provento.taxFormatted);
+      await loadInvestments();
+    } catch (error) {
+      toast('Não foi possível agendar o provento', 'err', error.message);
+    }
+  });
+
+  // ── Botões de atualização ─────────────────────────────────────────────────
+  const refreshers = {
+    refreshSales: loadSales,
+    refreshCharges: loadCharges,
+    refreshSubs: loadSubscriptions,
+    refreshCustomers: loadCustomers,
+    refreshFiscal: loadFiscal,
+    refreshStatement: () => loadStatement(state.statementRange.from, state.statementRange.to),
+    refreshSettlements: loadSettlements,
+    refreshRisk: loadRisk,
+    refreshOpenFinance: loadOpenFinance,
+    refreshInvestments: loadInvestments,
+  };
+  Object.entries(refreshers).forEach(([id, fn]) => {
+    const button = document.getElementById(id);
+    if (button) button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await fn(); toast('Dados atualizados'); } catch (error) { toast('Falha ao atualizar', 'err', error.message); } finally { button.disabled = false; }
+    });
+  });
+  $('#downloadCsv').addEventListener('click', downloadCsv);
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  window.addEventListener('hashchange', () => {
+    const route = (location.hash || '#overview').replace('#', '');
+    if (route !== state.route) go(route, 'replace');
+  });
+
+  async function boot() {
+    try {
+      const info = await api('/v1/demo/bootstrap');
+      state.token = info.token;
+      state.merchant = info.merchant;
+      state.terminalId = info.terminalId;
+      paintWorkspace(info.merchant);
+      await loadCustomers();
+      const initial = (location.hash || '#overview').replace('#', '');
+      await go(initial, 'replace');
+    } catch (error) {
+      $('#liveDot').classList.add('off');
+      $('#liveLabel').textContent = 'Desconectado';
+      toast('Não foi possível iniciar o aplicativo', 'err', error.message);
+    }
+  }
+
+  setInterval(() => {
+    const now = new Date();
+    $('#clock').textContent = now.toLocaleTimeString('pt-BR');
+    $('#clockDate').textContent = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+  }, 1000);
+
+  setInterval(() => {
+    if (state.route === 'overview') loadOverview().catch(() => {});
+  }, 20000);
+
+  boot();
+})();
+</script>
+</body>
+</html>

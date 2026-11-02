@@ -1,0 +1,245 @@
+// Contrato gRPC de referência para a conta digital do xPartner Bank.
+// Não é compilado nem servido por esta entrega: existe para guiar a extração
+// do núcleo em microsserviços (Go/Java/Elixir) sem reescrever o domínio.
+syntax = "proto3";
+
+package xpartner.bank.v1;
+
+option go_package = "github.com/xpartner/bank/gen/bankv1;bankv1";
+
+service BankAuth {
+  rpc Status(StatusRequest) returns (StatusReply);
+  rpc Register(RegisterRequest) returns (RegisterReply);
+  rpc Login(LoginRequest) returns (LoginReply);
+  rpc Logout(LogoutRequest) returns (Empty);
+  rpc ChangePassword(ChangePasswordRequest) returns (Empty);
+  rpc Me(MeRequest) returns (MeReply);
+}
+
+service BankAccounts {
+  rpc GetAccount(GetAccountRequest) returns (AccountReply);
+  rpc Statement(StatementRequest) returns (StatementReply);
+  rpc LookupRecipient(LookupRecipientRequest) returns (RecipientReply);
+  rpc CreditScore(GetAccountRequest) returns (CreditScoreReply);
+}
+
+service BankTransfers {
+  rpc Transfer(TransferRequest) returns (TransferReply);
+  rpc GetTransfer(GetTransferRequest) returns (TransferReply);
+}
+
+service BankAdmin {
+  rpc Overview(Empty) returns (OverviewReply);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersReply);
+  rpc GetUser(GetUserRequest) returns (UserDetailReply);
+  rpc ApproveUser(UserActionRequest) returns (UserReply);
+  rpc RejectUser(UserActionRequest) returns (Empty);
+  rpc BlockUser(UserActionRequest) returns (Empty);
+  rpc UnblockUser(UserActionRequest) returns (Empty);
+  rpc ResetPassword(UserActionRequest) returns (ResetPasswordReply);
+  rpc DeleteUser(UserActionRequest) returns (Empty);
+  rpc AuditLog(ListAuditRequest) returns (AuditLogReply);
+}
+
+message Empty {}
+
+message StatusRequest {}
+message StatusReply {
+  bool demo_mode = 1;
+  bool first_user_becomes_admin = 2;
+  bool bootstrap_token_required = 3;
+  int64 users = 4;
+}
+
+message RegisterRequest {
+  string name = 1;
+  string document = 2;
+  string email = 3;
+  string phone = 4;
+  string password = 5;
+  string bootstrap_token = 6;
+}
+message RegisterReply {
+  User user = 1;
+  Account account = 2;
+  bool requires_approval = 3;
+  bool bootstrap_admin = 4;
+  Session session = 5;
+}
+
+message LoginRequest {
+  string identifier = 1;
+  string password = 2;
+}
+message LoginReply {
+  User user = 1;
+  Account account = 2;
+  Session session = 3;
+}
+
+message LogoutRequest { string session_token = 1; }
+message ChangePasswordRequest {
+  string session_token = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+message MeRequest { string session_token = 1; }
+message MeReply {
+  User user = 1;
+  Account account = 2;
+  Session session = 3;
+  bool requires_password_change = 4;
+}
+
+message Session {
+  string csrf_token = 1;
+  string expires_at = 2;
+  string created_at = 3;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string document_masked = 3;
+  string email = 4;
+  string role = 5;
+  string status = 6;
+  bool must_change_password = 7;
+  string created_at = 8;
+}
+
+message Account {
+  string id = 1;
+  string branch = 2;
+  string number = 3;
+  string formatted_number = 4;
+  string status = 5;
+  int64 balance_cents = 6;
+  int64 per_transfer_limit_cents = 7;
+  int64 daily_limit_cents = 8;
+}
+
+message GetAccountRequest { string session_token = 1; }
+message AccountReply { Account account = 1; }
+
+message StatementRequest {
+  string session_token = 1;
+  string from = 2;
+  string to = 3;
+  int32 limit = 4;
+}
+message StatementEntry {
+  string id = 1;
+  string transfer_id = 2;
+  string direction = 3;
+  int64 amount_cents = 4;
+  int64 balance_after_cents = 5;
+  string counterparty_name = 6;
+  string counterparty_account = 7;
+  string description = 8;
+  string end_to_end_id = 9;
+  string created_at = 10;
+}
+message StatementReply {
+  string account_id = 1;
+  int64 balance_cents = 2;
+  repeated StatementEntry entries = 3;
+}
+
+message LookupRecipientRequest {
+  string session_token = 1;
+  string type = 2; // accountNumber | document | email
+  string query = 3;
+}
+message RecipientReply {
+  bool found = 1;
+  string name = 2;
+  string document_masked = 3;
+  string account = 4;
+}
+
+message CreditScoreReply {
+  int32 score = 1;
+  string band = 2;
+  int64 suggested_limit_cents = 3;
+  repeated ScoreFactor factors = 4;
+  string disclaimer = 5;
+}
+message ScoreFactor {
+  string label = 1;
+  int32 points = 2;
+  int32 max = 3;
+}
+
+message TransferRequest {
+  string session_token = 1;
+  int64 amount_cents = 2;
+  string recipient_account_number = 3;
+  string recipient_document = 4;
+  string recipient_email = 5;
+  string description = 6;
+  string idempotency_key = 7;
+}
+message TransferReply {
+  string id = 1;
+  string status = 2;
+  int64 amount_cents = 3;
+  string end_to_end_id = 4;
+  string created_at = 5;
+  bool replayed = 6;
+  string integrity_hash = 7;
+  int64 balance_after_cents = 8;
+}
+message GetTransferRequest {
+  string session_token = 1;
+  string id = 2;
+}
+
+message ListUsersRequest {
+  string session_token = 1;
+  string status = 2;
+  string search = 3;
+  int32 limit = 4;
+}
+message ListUsersReply { repeated User users = 1; }
+message GetUserRequest {
+  string session_token = 1;
+  string id = 2;
+}
+message UserDetailReply {
+  User user = 1;
+  Account account = 2;
+  int32 credit_score = 3;
+  repeated StatementEntry entries = 4;
+}
+message UserActionRequest {
+  string session_token = 1;
+  string id = 2;
+}
+message UserReply { User user = 1; }
+message ResetPasswordReply {
+  string temporary_password = 1;
+  string expires_at = 2;
+}
+message OverviewReply {
+  int64 customers = 1;
+  int64 pending = 2;
+  int64 active = 3;
+  int64 blocked = 4;
+  int64 deposited_cents = 5;
+  repeated User pending_users = 6;
+}
+message ListAuditRequest {
+  string session_token = 1;
+  int32 limit = 2;
+}
+message AuditLogReply {
+  repeated AuditEntry entries = 1;
+}
+message AuditEntry {
+  string id = 1;
+  string action = 2;
+  string actor_id = 3;
+  string target = 4;
+  string created_at = 5;
+}

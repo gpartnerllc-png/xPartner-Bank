@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Core Bank OS · xPartner Bank</title>
+<meta name="description" content="Console operacional do xPartner Bank: contas, partidas dobradas, Pix e auditoria em tempo real." />
+<style>
+  :root {
+    --ink: #0b1f3a;
+    --ink-soft: #2b4566;
+    --muted: #61738c;
+    --line: #d8e3f2;
+    --line-strong: #b9cbe4;
+    --surface: #ffffff;
+    --surface-2: #f4f8ff;
+    --blue: #0a63ff;
+    --blue-deep: #0847b8;
+    --orange: #ff7a18;
+    --orange-soft: #fff1e4;
+    --cyan: #12b5e5;
+    --green: #0f9d6a;
+    --red: #d92d3f;
+    --radius: 16px;
+    --shadow: 0 22px 55px -34px rgba(11, 31, 58, .55);
+    --mono: "SFMono-Regular", ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font: 14px/1.55 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(820px 460px at 8% -8%, rgba(10, 99, 255, .13), transparent 62%),
+      radial-gradient(700px 420px at 96% 2%, rgba(255, 122, 24, .12), transparent 60%),
+      linear-gradient(180deg, #f8fbff 0%, #eef4fe 100%);
+    min-height: 100vh;
+  }
+  #mesh {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; opacity: .55; z-index: 0;
+  }
+  .shell { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 22px 22px 64px; }
+  a { color: var(--blue-deep); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    flex-wrap: wrap; padding: 14px 18px; border-radius: var(--radius);
+    background: rgba(255, 255, 255, .86); backdrop-filter: blur(10px);
+    border: 1px solid rgba(216, 227, 242, .9); box-shadow: var(--shadow);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(140deg, var(--blue) 0%, #3f8bff 55%, var(--orange) 100%);
+    color: #fff; font-weight: 800; letter-spacing: -.5px; font-size: 16px;
+    box-shadow: 0 12px 24px -12px rgba(10, 99, 255, .7);
+  }
+  .brand-copy strong { display: block; font-size: 15px; letter-spacing: .02em; }
+  .brand-copy span { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; }
+  .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px;
+    border-radius: 999px; border: 1px solid var(--line); background: #fff;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(15,157,106,.12); }
+  .btn {
+    appearance: none; border: 1px solid var(--line-strong); background: #fff; color: var(--ink);
+    border-radius: 11px; padding: 9px 14px; font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .btn:hover { border-color: var(--blue); box-shadow: 0 10px 20px -14px rgba(10, 99, 255, .55); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn.primary { background: linear-gradient(135deg, var(--blue), #3b83ff); border-color: transparent; color: #fff; }
+  .btn.orange { background: linear-gradient(135deg, #ff8a2b, #ff6a00); border-color: transparent; color: #fff; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--blue-deep); padding: 6px 9px; }
+  .btn.ghost:hover { background: rgba(10, 99, 255, .07); }
+  .btn.sm { padding: 6px 10px; font-size: 12px; border-radius: 9px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .03em; white-space: nowrap;
+  }
+  .tag.ok { background: #e7f8f0; color: #08734f; }
+  .tag.warn { background: #fff3e2; color: #a75a00; }
+  .tag.err { background: #fdecef; color: #b02033; }
+  .tag.info { background: #e8f1ff; color: #0a52c9; }
+  .tag.violet { background: #f1edff; color: #5b3fd1; }
+  h1 { font-size: clamp(26px, 3.4vw, 40px); letter-spacing: -.02em; margin: 26px 0 6px; }
+  h1 span { color: var(--blue); }
+  .lede { color: var(--muted); max-width: 760px; margin: 0 0 22px; }
+  .grid { display: grid; gap: 16px; }
+  .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .cols { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; }
+  .stack { display: grid; gap: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px; box-shadow: var(--shadow);
+  }
+  .card.accent { background: linear-gradient(160deg, #f7fbff 0%, #ffffff 55%, #fff8f1 100%); }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .card-head h2, .card-head h3 { margin: 0; font-size: 15px; letter-spacing: -.01em; }
+  .card-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  .kpi-value { font-size: 25px; font-weight: 750; letter-spacing: -.03em; margin-top: 6px; }
+  .kpi-sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .mono { font-family: var(--mono); }
+  .small { font-size: 12px; }
+  .muted { color: var(--muted); }
+  .amount { font-variant-numeric: tabular-nums; font-weight: 650; }
+  .in { color: var(--green); }
+  .out { color: var(--ink); }
+  form.form { display: grid; gap: 12px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  label.field { display: grid; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+  label.field em { font-style: normal; font-weight: 500; color: var(--muted); }
+  input, select, textarea {
+    width: 100%; font: inherit; font-size: 13.5px; color: var(--ink);
+    background: #fbfdff; border: 1px solid var(--line-strong); border-radius: 11px;
+    padding: 10px 12px; transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(10, 99, 255, .14); background: #fff;
+  }
+  textarea { resize: vertical; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row.wrap { flex-wrap: wrap; }
+  .row.between { justify-content: space-between; }
+  .divider { height: 1px; background: var(--line); margin: 16px 0; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th {
+    text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--line);
+  }
+  tbody td { padding: 10px; border-bottom: 1px solid #eef3fa; vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: #f8fbff; }
+  .empty { padding: 22px; text-align: center; color: var(--muted); font-size: 12.5px; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; margin: 0; font-size: 12.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; text-align: right; }
+  .receipt { border: 1px dashed var(--line-strong); border-radius: 13px; padding: 14px; background: var(--surface-2); margin-top: 4px; }
+  .receipt h4 { margin: 0 0 10px; font-size: 13px; }
+  .note { font-size: 11.5px; color: var(--muted); background: #f6f9ff; border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; }
+  .note.ok { background: #f0fbf6; border-color: #bfe9d6; color: #176c4f; }
+  .note.err { background: #fdf1f3; border-color: #f3c9d0; color: #a02133; }
+  .code-out {
+    margin-top: 10px; font-family: var(--mono); font-size: 11.5px; line-height: 1.6;
+    background: #0d2a4f; color: #d7e8ff; border-radius: 12px; padding: 12px;
+    border: 1px solid #17457c; min-height: 90px; word-break: break-all;
+  }
+  .log { display: grid; gap: 8px; max-height: 320px; overflow: auto; }
+  .log-item {
+    display: grid; grid-template-columns: 82px 1fr auto; gap: 10px; align-items: baseline;
+    padding: 9px 10px; border: 1px solid #eef3fa; border-radius: 11px; background: #fbfdff;
+  }
+  .log-item time { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .log-item p { margin: 0; font-size: 12px; }
+  .log-item small { color: var(--muted); font-size: 10.5px; font-family: var(--mono); }
+  .hero-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .hero-line .divider { width: 1px; height: 14px; margin: 0; background: var(--line-strong); }
+  .login { max-width: 440px; margin: 7vh auto 0; }
+  .login .card { padding: 26px; }
+  .hidden { display: none !important; }
+  .site-foot { margin-top: 26px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
+  .search { max-width: 260px; }
+  .status-line { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  @media (max-width: 1080px) {
+    .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cols { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .two { grid-template-columns: 1fr; }
+    .shell { padding: 14px 12px 40px; }
+    .card { padding: 14px; }
+    .log-item { grid-template-columns: 1fr; gap: 2px; }
+    .top { padding: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #mesh { display: none; }
+    .btn, input, select, textarea { transition: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="mesh" aria-hidden="true"></canvas>
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">XP</div>
+      <div class="brand-copy">
+        <strong>CORE BANK OS</strong>
+        <span>xPartner Bank · ledger de dupla entrada</span>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="pill" id="env-pill"><i></i><span id="env-label">conectando…</span></span>
+      <a class="btn sm" href="/bank">App bancário</a>
+      <a class="btn sm" href="/openapi.json" target="_blank" rel="noopener">OpenAPI</a>
+      <button class="btn sm ghost hidden" id="logout-btn" type="button">Sair</button>
+    </div>
+  </header>
+
+  <section id="login-section" class="login hidden">
+    <div class="card accent">
+      <div class="card-head"><div><h2>Entrar no Core Bank OS</h2><p>Use o e-mail ou CPF/CNPJ da sua conta bancária.</p></div><span class="tag info">sessão HttpOnly</span></div>
+      <form class="form" id="login-form">
+        <label class="field"><span>Identificador</span><input id="login-identifier" autocomplete="username" placeholder="voce@empresa.com" required /></label>
+        <label class="field"><span>Senha</span><input id="login-password" type="password" autocomplete="current-password" required /></label>
+        <button class="btn primary" type="submit" id="login-submit">Acessar console</button>
+        <div class="note" id="login-note">O console usa a mesma sessão do aplicativo bancário. Nenhuma credencial fica no navegador.</div>
+      </form>
+    </div>
+  </section>
+
+  <main id="app-section" class="hidden">
+    <h1>Core <span>Bank OS</span></h1>
+    <p class="lede">Console operacional conectado ao livro-razão real: contas, Pix, validação FEBRABAN módulo 11 e trilha de auditoria. Toda movimentação grava duas partidas contábeis na mesma transação SQL.</p>
+    <div class="hero-line">
+      <span class="tag ok" id="ledger-chip">ledger —</span>
+      <span class="tag info" id="role-chip">papel —</span>
+      <span class="small muted" id="who-line">—</span>
+    </div>
+
+    <div class="grid kpis" id="kpis">
+      <div class="card"><div class="kpi-label">Clientes</div><div class="kpi-value" id="kpi-users">—</div><div class="kpi-sub" id="kpi-users-sub">cadastros</div></div>
+      <div class="card"><div class="kpi-label">Ativos</div><div class="kpi-value" id="kpi-active">—</div><div class="kpi-sub" id="kpi-pending">—</div></div>
+      <div class="card"><div class="kpi-label">Saldo custódia</div><div class="kpi-value" id="kpi-balance">—</div><div class="kpi-sub">contas de clientes</div></div>
+      <div class="card"><div class="kpi-label">Volume 24h</div><div class="kpi-value" id="kpi-volume">—</div><div class="kpi-sub" id="kpi-transfers">—</div></div>
+      <div class="card"><div class="kpi-label">Tesouraria</div><div class="kpi-value" id="kpi-treasury">—</div><div class="kpi-sub">capital de lastro</div></div>
+      <div class="card"><div class="kpi-label">Chaves Pix</div><div class="kpi-value" id="kpi-pix">—</div><div class="kpi-sub" id="kpi-pix-sub">ativas</div></div>
+      <div class="card"><div class="kpi-label">Carteira USD</div><div class="kpi-value" id="kpi-fx">—</div><div class="kpi-sub">demo · livro próprio</div></div>
+    </div>
+
+    <div class="grid cols" style="margin-top:16px">
+      <div class="stack">
+        <div class="card">
+          <div class="card-head">
+            <div><h3 id="accounts-title">Contas e titulares</h3><p>Saldo e número vêm do mesmo registro usado nas transferências.</p></div>
+            <input class="search" id="accounts-search" placeholder="Buscar nome, documento ou conta" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Titular</th><th>Conta</th><th>Papel</th><th>Status</th><th>Saldo</th><th></th></tr></thead>
+              <tbody id="accounts-body"><tr><td colspan="6"><div class="empty">Carregando contas…</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h3>Chaves Pix</h3><p id="pix-subtitle">Chaves ativas e mascaradas.</p></div><span class="tag info" id="pix-total">0</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Titular</th><th>Tipo</th><th>Chave</th><th>Status</th><th>Criada</th></tr></thead>
+              <tbody id="pix-body"><tr><td colspan="5"><div class="empty">Carregando chaves Pix…</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card accent">
+          <div class="card-head"><div><h3>Transferência real</h3><p>Uma chamada, duas partidas, um comprovante.</p></div><span class="tag ok">atômica</span></div>
+          <form class="form" id="transfer-form">
+            <div class="two">
+              <label class="field"><span>Buscar por</span>
+                <select id="recipient-type">
+                  <option value="accountNumber">Conta</option>
+                  <option value="document">CPF/CNPJ</option>
+                  <option value="email">E-mail</option>
+                  <option value="pix">Chave Pix</option>
+                </select>
+              </label>
+              <label class="field"><span>Favorecido</span><input id="recipient-value" placeholder="1000001-1" required /></label>
+            </div>
+            <div class="two">
+              <label class="field"><span>Valor (R$)</span><input id="transfer-amount" inputmode="decimal" placeholder="0,00" required /></label>
+              <label class="field"><span>Saldo disponível</span><input id="transfer-balance" readonly /></label>
+            </div>
+            <label class="field"><span>Descrição <em>opcional</em></span><input id="transfer-description" maxlength="120" placeholder="Ex.: liquidação de serviço" /></label>
+            <button class="btn primary" type="submit" id="transfer-submit">Lançar transferência</button>
+            <div class="note">O débito só ocorre com saldo suficiente, dentro de <span class="mono">BEGIN IMMEDIATE</span>. Repetir a chave de idempotência não duplica o valor.</div>
+          </form>
+          <div id="transfer-result"></div>
+          <div id="funding-box" class="hidden">
+            <div class="divider"></div>
+            <div class="row wrap">
+              <span class="small muted">Aporte de teste (demo):</span>
+              <input id="funding-amount" inputmode="decimal" placeholder="100,00" style="max-width:120px" />
+              <button class="btn sm orange" id="funding-btn" type="button">Receber aporte</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h3>Módulo 11 FEBRABAN</h3><p>Valide o dígito da conta no padrão dos bancos.</p></div><span class="tag violet">DV</span></div>
+          <form class="form" id="dv-form">
+            <label class="field"><span>Conta (base + DV ou completa)</span><input id="dv-value" placeholder="1000001-1 ou 123456X" /></label>
+            <button class="btn" type="submit">Validar dígito</button>
+          </form>
+          <div id="dv-result" class="note" style="margin-top:10px">Aceita a convenção padrão (resto 10 → 0) e a legada (X).</div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h3>Eventos e auditoria</h3><p id="events-subtitle">Últimas ações registradas.</p></div><button class="btn ghost sm" id="refresh-btn" type="button">Atualizar</button></div>
+          <div class="log" id="events-log"><div class="empty">Carregando eventos…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols" style="margin-top:16px">
+      <div class="card accent">
+        <div class="card-head">
+          <div><h3>Crédito</h3><p>Antecipação em 30 dias ou empréstimo Price, desembolsado pela tesouraria com duas partidas no ledger.</p></div>
+          <span class="tag violet" id="credit-band">—</span>
+        </div>
+        <div class="row wrap" style="gap:26px; margin-bottom:12px">
+          <div><div class="kpi-label">Limite disponível</div><div class="kpi-value" id="credit-limit">—</div><div class="kpi-sub" id="credit-score">—</div></div>
+          <div><div class="kpi-label">Principal em aberto</div><div class="kpi-value" id="credit-outstanding">—</div><div class="kpi-sub" id="credit-next">—</div></div>
+        </div>
+        <form class="form" id="credit-form">
+          <div class="two">
+            <label class="field"><span>Produto</span>
+              <select id="credit-product">
+                <option value="EMPRESTIMO">Empréstimo pessoal</option>
+                <option value="ANTECIPACAO">Antecipação de recebível</option>
+              </select>
+            </label>
+            <label class="field"><span>Parcelas</span>
+              <select id="credit-installments">
+                <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option>
+                <option value="4">4x</option><option value="6">6x</option><option value="9">9x</option>
+                <option value="12">12x</option>
+              </select>
+            </label>
+          </div>
+          <label class="field"><span>Valor (R$)</span><input id="credit-amount" inputmode="decimal" placeholder="5.000,00" required /></label>
+          <div class="row wrap">
+            <button class="btn" type="button" id="credit-quote-btn">Simular</button>
+            <button class="btn primary" type="submit" id="credit-submit">Contratar crédito</button>
+          </div>
+          <div class="note">Taxa mensal definida pela faixa do score interno e congelada no contrato. Antecipação: valor informado é o face value, com deságio de 30 dias.</div>
+        </form>
+        <div id="credit-result"></div>
+        <div class="divider"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Contrato</th><th>Status</th><th>Em aberto</th><th></th></tr></thead>
+            <tbody id="credit-contracts"><tr><td colspan="4"><div class="empty">Carregando contratos…</div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="row wrap" style="margin-top:10px">
+          <a class="btn sm ghost" href="/v1/bank/credit/contracts.csv">Exportar crédito CSV</a>
+          <span class="small muted">Sessão HttpOnly · sem token na URL</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><h3>PDV &amp; NFC-e</h3><p>Venda presencial de demonstração: nota autorizada na hora e líquido creditado na conta do titular.</p></div>
+          <span class="tag warn">demo</span>
+        </div>
+        <form class="form" id="pdv-form">
+          <div class="two">
+            <label class="field"><span>Valor (R$)</span><input id="pdv-amount" inputmode="decimal" placeholder="29,90" required /></label>
+            <label class="field"><span>Meio</span>
+              <select id="pdv-method">
+                <option value="PIX">Pix</option>
+                <option value="CREDIT">Crédito</option>
+                <option value="DEBIT">Débito</option>
+                <option value="VOUCHER">Voucher</option>
+              </select>
+            </label>
+          </div>
+          <label class="field"><span>Descrição</span><input id="pdv-description" maxlength="120" placeholder="Café especial 250g" /></label>
+          <button class="btn orange" type="submit" id="pdv-submit">Vender e emitir NFC-e</button>
+          <div class="note">A taxa do adquirente é retida e o líquido entra como <span class="mono">channel=PDV</span>. Em produção a liquidação vem do arranjo (D+1), não da tesouraria.</div>
+        </form>
+        <div id="pdv-result"></div>
+        <div class="divider"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Hora</th><th>Meio</th><th>Bruto</th><th>Líquido</th><th>NFC-e</th><th></th></tr></thead>
+            <tbody id="pdv-sales"><tr><td colspan="6"><div class="empty">Carregando vendas…</div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="row wrap" style="margin-top:10px">
+          <a class="btn sm ghost" href="/v1/bank/pdv/sales.csv">Exportar PDV CSV</a>
+          <span class="small muted">XML da nota disponível por venda</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="site-foot">
+      <span>Core Bank OS · Node 24 · SQLite WAL · partidas dobradas · Pix EMV/CRC16 · crédito Price · NFC-e</span>
+      <span><a href="/bank">/bank</a> · <a href="/">dashboard</a> · <a href="/v1/bank/statement.csv">extrato CSV</a> · <a href="/health/ready">saúde</a></span>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+  const esc = (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const money = (cents) => {
+    const value = Number(cents || 0) / 100;
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+  const when = (iso) => {
+    if (!iso) return '—';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
+  const parseMoney = (raw) => {
+    const text = String(raw || '').replace(/R\$/gi, '').replace(/\s/g, '');
+    if (!text) return NaN;
+    const normalized = text.includes(',') ? text.replace(/\./g, '').replace(',', '.') : text;
+    if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return NaN;
+    return Math.round(Number(normalized) * 100);
+  };
+  const statusTag = (status) => {
+    const map = {
+      ACTIVE: 'ok', PENDING: 'warn', BLOCKED: 'err', DELETED: 'err', SENT: 'info', SETTLED: 'ok', REJECTED: 'err',
+      OPEN: 'warn', PAID: 'ok', AUTHORIZED: 'ok', CONTINGENCY: 'warn',
+    };
+    return '<span class="tag ' + (map[status] || 'info') + '">' + esc(status) + '</span>';
+  };
+
+  const state = {
+    me: null, csrf: null, status: null, isAdmin: false, users: [], overview: null, pixKeys: [], timer: null,
+    creditLine: null, contracts: [], pdvSales: [], fxWallet: null,
+  };
+
+  function showNote(target, message, kind = 'ok') {
+    const host = typeof target === 'string' ? $(target) : target;
+    if (!host) return;
+    const box = document.createElement('div');
+    box.className = 'note ' + (kind === 'err' ? 'err' : 'ok');
+    box.textContent = message;
+    box.style.marginTop = '10px';
+    host.innerHTML = '';
+    host.appendChild(box);
+    setTimeout(() => { if (box.parentNode === host) box.remove(); }, 7000);
+  }
+
+  function toast(message, kind = 'ok') {
+    const note = $('#transfer-result');
+    const box = document.createElement('div');
+    box.className = 'note ' + (kind === 'err' ? 'err' : 'ok');
+    box.textContent = message;
+    box.style.marginTop = '10px';
+    note.innerHTML = '';
+    note.appendChild(box);
+    setTimeout(() => { if (box.parentNode === note) box.remove(); }, 6000);
+  }
+
+  async function api(path, options = {}) {
+    const opts = { credentials: 'same-origin', ...options, headers: { ...(options.headers || {}) } };
+    if (opts.body !== undefined) {
+      opts.headers['content-type'] = 'application/json';
+      opts.body = JSON.stringify(opts.body);
+    }
+    const method = String(opts.method || 'GET').toUpperCase();
+    if (method !== 'GET' && state.csrf) opts.headers['x-bank-csrf'] = state.csrf;
+    const response = await fetch(path, opts);
+    const text = await response.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
+    if (!response.ok) {
+      const error = new Error((data && data.error && data.error.message) || 'Falha na operação.');
+      error.code = data && data.error ? data.error.code : 'ERROR';
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  function showLogin() {
+    $('#login-section').classList.remove('hidden');
+    $('#app-section').classList.add('hidden');
+    $('#logout-btn').classList.add('hidden');
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  }
+
+  function showApp(me) {
+    state.me = me;
+    state.csrf = me.csrfToken;
+    state.isAdmin = me.user.role === 'ADMIN';
+    $('#login-section').classList.add('hidden');
+    $('#app-section').classList.remove('hidden');
+    $('#logout-btn').classList.remove('hidden');
+    $('#who-line').textContent = me.user.name + ' · ' + (me.user.account ? me.user.account.formattedNumber : 'sem conta') + ' · ' + me.user.email;
+    $('#role-chip').textContent = 'papel ' + (me.user.role === 'ADMIN' ? 'administrador' : 'cliente');
+    $('#role-chip').className = 'tag ' + (state.isAdmin ? 'violet' : 'info');
+    $('#accounts-title').textContent = state.isAdmin ? 'Contas e titulares' : 'Sua conta';
+    $('#pix-subtitle').textContent = state.isAdmin ? 'Todas as chaves com titular mascarado.' : 'Suas chaves Pix cadastradas.';
+    $('#accounts-search').classList.toggle('hidden', !state.isAdmin);
+    $('#transfer-balance').value = me.user.account ? me.user.account.balanceFormatted : '—';
+    if (state.timer) clearInterval(state.timer);
+    state.timer = setInterval(() => { if (!document.hidden) void loadAll(true); }, 25000);
+  }
+
+  async function login(identifier, password) {
+    const result = await api('/v1/bank/auth/login', { method: 'POST', body: { identifier, password } });
+    state.csrf = result.csrfToken;
+    const me = await api('/v1/bank/me');
+    showApp(me);
+    await loadAll();
+  }
+
+  $('#login-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = $('#login-submit');
+    button.disabled = true;
+    button.textContent = 'Entrando…';
+    try {
+      await login($('#login-identifier').value.trim(), $('#login-password').value);
+      $('#login-password').value = '';
+      $('#login-note').className = 'note';
+      $('#login-note').textContent = 'Sessão iniciada. O console atualiza os dados a cada 25 segundos.';
+    } catch (error) {
+      const note = $('#login-note');
+      note.className = 'note err';
+      note.textContent = error.message || 'Não foi possível entrar.';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Acessar console';
+    }
+  });
+
+  $('#logout-btn').addEventListener('click', async () => {
+    try { await api('/v1/bank/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
+    state.me = null;
+    showLogin();
+  });
+
+  function renderKpis() {
+    const me = state.me;
+    if (state.isAdmin && state.overview) {
+      const o = state.overview.system;
+      $('#kpi-users').textContent = String(o.users);
+      $('#kpi-users-sub').textContent = o.blockedUsers + ' bloqueado(s)';
+      $('#kpi-active').textContent = String(o.activeUsers);
+      $('#kpi-pending').textContent = o.pendingUsers + ' pendente(s) de aprovação';
+      $('#kpi-balance').textContent = o.totalBalanceFormatted;
+      $('#kpi-volume').textContent = o.volume24hFormatted;
+      $('#kpi-transfers').textContent = o.transfers24h + ' transferência(s) em 24h';
+      $('#kpi-treasury').textContent = o.treasuryBalanceFormatted;
+      $('#ledger-chip').textContent = o.ledger.balanced ? 'ledger equilibrado' : 'ledger desequilibrado';
+      $('#ledger-chip').className = 'tag ' + (o.ledger.balanced ? 'ok' : 'err');
+      $('#kpi-pix').textContent = String(state.pixKeys.length);
+      $('#kpi-pix-sub').textContent = 'chaves registradas';
+      $('#kpi-fx').textContent = o.fx ? o.fx.custodyFormatted : 'US$ 0,00';
+      $('#kpi-fx').nextElementSibling.textContent = o.fx
+        ? o.fx.wallets + ' carteira(s) com saldo · demo'
+        : 'demo · livro próprio';
+      $('#funding-box').classList.remove('hidden');
+      $('#events-subtitle').textContent = 'Trilha de auditoria do banco.';
+    } else if (me && me.user.account) {
+      const account = me.user.account;
+      $('#kpi-users').textContent = '1';
+      $('#kpi-users-sub').textContent = 'sua conta';
+      $('#kpi-active').textContent = '1';
+      $('#kpi-pending').textContent = 'conta ativa';
+      $('#kpi-balance').textContent = account.balanceFormatted;
+      $('#kpi-volume').textContent = account.balanceFormatted;
+      $('#kpi-transfers').textContent = 'saldo disponível';
+      $('#kpi-treasury').textContent = money(account.dailyLimitCents);
+      $('#kpi-treasury').nextElementSibling.textContent = 'limite diário';
+      $('#kpi-fx').textContent = state.fxWallet ? state.fxWallet.balanceFormatted : 'US$ 0,00';
+      $('#ledger-chip').textContent = 'ledger equilibrado';
+      $('#ledger-chip').className = 'tag ok';
+      $('#kpi-pix').textContent = String(state.pixKeys.length);
+      $('#kpi-pix-sub').textContent = 'suas chaves';
+      $('#funding-box').classList.remove('hidden');
+      $('#events-subtitle').textContent = 'Seus últimos lançamentos.';
+    }
+  }
+
+  function renderAccounts(filter = '') {
+    const body = $('#accounts-body');
+    if (!state.isAdmin) {
+      const me = state.me;
+      const account = me && me.user.account;
+      if (!account) {
+        body.innerHTML = '<tr><td colspan="6"><div class="empty">Nenhuma conta ativa.</div></td></tr>';
+        return;
+      }
+      body.innerHTML = '<tr>' +
+        '<td><b>' + esc(me.user.name) + '</b><div class="small muted mono">' + esc(me.user.document) + '</div></td>' +
+        '<td class="mono">' + esc(account.formattedNumber) + '</td>' +
+        '<td>' + esc(me.user.role) + '</td>' +
+        '<td>' + statusTag(me.user.status) + '</td>' +
+        '<td class="amount">' + esc(account.balanceFormatted) + '</td>' +
+        '<td><a class="btn ghost sm" href="/bank">Abrir app</a></td></tr>';
+      return;
+    }
+    const term = filter.trim().toLowerCase();
+    const rows = state.users.filter((user) => {
+      if (!term) return true;
+      return [user.name, user.document, user.email, user.account ? user.account.formattedNumber : ''].join(' ').toLowerCase().includes(term);
+    });
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6"><div class="empty">Nenhuma conta encontrada.</div></td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((user) => {
+      const action = user.status === 'PENDING'
+        ? '<button class="btn sm" type="button" data-approve="' + esc(user.id) + '">Aprovar</button>'
+        : '<span class="small muted">' + (user.mustChangePassword ? 'senha temporária' : '—') + '</span>';
+      return '<tr>' +
+        '<td><b>' + esc(user.name) + '</b><div class="small muted mono">' + esc(user.document) + '</div></td>' +
+        '<td class="mono">' + esc(user.account ? user.account.formattedNumber : '—') + '<div class="small muted">' + esc(user.email) + '</div></td>' +
+        '<td>' + esc(user.role) + '</td>' +
+        '<td>' + statusTag(user.status) + '</td>' +
+        '<td class="amount">' + esc(user.account ? user.account.balanceFormatted : '—') + '</td>' +
+        '<td>' + action + '</td></tr>';
+    }).join('');
+  }
+
+  function renderPix() {
+    const body = $('#pix-body');
+    $('#pix-total').textContent = String(state.pixKeys.length);
+    if (!state.pixKeys.length) {
+      body.innerHTML = '<tr><td colspan="5"><div class="empty">Nenhuma chave Pix ainda. Registre no app bancário em Pix.</div></td></tr>';
+      return;
+    }
+    body.innerHTML = state.pixKeys.map((key) => {
+      const holder = key.holderName || (state.me && state.me.user.name) || '—';
+      return '<tr>' +
+        '<td>' + esc(holder) + (key.holderDocumentMasked ? '<div class="small muted mono">' + esc(key.holderDocumentMasked) + '</div>' : '') + '</td>' +
+        '<td><span class="tag info">' + esc(key.type) + '</span></td>' +
+        '<td class="mono small">' + esc(key.masked) + '</td>' +
+        '<td>' + statusTag(key.status) + '</td>' +
+        '<td class="small muted">' + esc(when(key.createdAt)) + '</td></tr>';
+    }).join('');
+  }
+
+  function renderCredit() {
+    const line = state.creditLine;
+    if (!line) return;
+    $('#credit-band').textContent = 'faixa ' + line.band;
+    $('#credit-band').className = 'tag ' + (line.band === 'MUITO_ALTO' ? 'err' : line.band === 'ALTO' ? 'warn' : 'violet');
+    $('#credit-limit').textContent = line.availableLimitFormatted;
+    $('#credit-score').textContent = 'score ' + line.score + ' · máximo ' + line.maxFormatted;
+    $('#credit-outstanding').textContent = line.outstandingPrincipalFormatted;
+    const upcoming = state.contracts
+      .filter((contract) => contract.status === 'OPEN' && contract.nextDueDate)
+      .sort((a, b) => String(a.nextDueDate).localeCompare(String(b.nextDueDate)))[0];
+    $('#credit-next').textContent = upcoming ? 'próximo vencimento ' + upcoming.nextDueDate : 'sem parcelas em aberto';
+
+    const body = $('#credit-contracts');
+    if (!state.contracts.length) {
+      body.innerHTML = '<tr><td colspan="4"><div class="empty">Nenhum contrato ainda. Simule e contrate acima.</div></td></tr>';
+      return;
+    }
+    body.innerHTML = state.contracts.map((contract) => {
+      const open = contract.schedule.find((entry) => entry.status === 'OPEN');
+      const actions = contract.status === 'OPEN'
+        ? '<button class="btn sm" type="button" data-credit-pay="' + esc(contract.id) + '" data-number="' + esc(open ? open.number : '1') + '">Pagar ' + esc(open ? open.number + 'ª' : '') + '</button> ' +
+          '<button class="btn sm ghost" type="button" data-credit-settle="' + esc(contract.id) + '">Liquidar</button>'
+        : '<span class="small muted">encerrado' + (contract.settledEarly ? ' · antecipado' : '') + '</span>';
+      return '<tr>' +
+        '<td><b class="mono">' + esc(contract.contractNumber) + '</b><div class="small muted">' + esc(contract.productLabel) + ' · ' + esc(contract.installments) + 'x · ' + esc(contract.monthlyRatePercent) + '% a.m.</div></td>' +
+        '<td>' + statusTag(contract.status) + '</td>' +
+        '<td class="amount">' + esc(contract.outstandingFormatted) + '<div class="small muted">próx. ' + esc(contract.nextDueDate || '—') + '</div></td>' +
+        '<td>' + actions + '</td></tr>';
+    }).join('');
+  }
+
+  function renderQuote(quote) {
+    const rows = quote.schedule.map((row) =>
+      '<tr><td class="mono">' + esc(row.number) + '</td><td class="mono small">' + esc(row.dueDate) + '</td>' +
+      '<td class="amount">' + esc(row.totalFormatted) + '</td><td class="small muted">juros ' + esc(row.interestFormatted) + '</td></tr>',
+    ).join('');
+    $('#credit-result').innerHTML = '<div class="receipt" style="margin-top:12px"><h4>Simulação · ' + esc(quote.productLabel) + '</h4>' +
+      '<dl class="kv">' +
+      '<dt>Valor liberado</dt><dd class="amount">' + esc(quote.principalFormatted) + '</dd>' +
+      '<dt>Total a pagar</dt><dd class="amount">' + esc(quote.totalDueFormatted) + '</dd>' +
+      '<dt>Custo do crédito</dt><dd>' + esc(quote.interestFormatted) + ' · ' + esc(quote.monthlyRatePercent) + '% a.m.</dd>' +
+      '<dt>Parcelas</dt><dd>' + esc(quote.installments) + 'x · ' + esc(quote.termLabel) + '</dd>' +
+      '<dt>Score na contratação</dt><dd>' + esc(quote.score) + ' (' + esc(quote.band) + ')</dd>' +
+      '</dl>' +
+      '<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>#</th><th>Vencimento</th><th>Parcela</th><th>Juros</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="note" style="margin-top:8px">' + esc(quote.disclaimer) + '</div></div>';
+  }
+
+  function renderPdv() {
+    const body = $('#pdv-sales');
+    if (!state.pdvSales.length) {
+      body.innerHTML = '<tr><td colspan="6"><div class="empty">Nenhuma venda no PDV ainda.</div></td></tr>';
+      return;
+    }
+    body.innerHTML = state.pdvSales.map((sale) => {
+      const fiscal = sale.fiscal
+        ? '<span class="tag ' + (sale.fiscal.status === 'AUTHORIZED' ? 'ok' : 'warn') + '">' + esc(sale.fiscal.status) + '</span>' +
+          '<div class="small muted mono">…' + esc(String(sale.fiscal.accessKey).slice(-10)) + '</div>'
+        : '<span class="tag warn">sem nota</span>';
+      const action = sale.fiscal
+        ? '<a class="btn ghost sm" href="/v1/bank/pdv/sales/' + encodeURIComponent(sale.id) + '/xml">XML</a>'
+        : '<span class="small muted">—</span>';
+      return '<tr>' +
+        '<td class="mono small">' + esc(when(sale.createdAt)) + '</td>' +
+        '<td><span class="tag info">' + esc(sale.method) + '</span><div class="small muted">' + esc(sale.installments) + 'x</div></td>' +
+        '<td class="amount">' + esc(sale.amountFormatted) + '</td>' +
+        '<td class="amount">' + esc(sale.netFormatted) + '<div class="small muted">taxa ' + esc(sale.feeFormatted) + '</div></td>' +
+        '<td>' + fiscal + '</td>' +
+        '<td>' + action + '</td></tr>';
+    }).join('');
+  }
+
+  function renderEvents(entries) {
+    const log = $('#events-log');
+    if (!entries.length) {
+      log.innerHTML = '<div class="empty">Nenhum evento registrado.</div>';
+      return;
+    }
+    log.innerHTML = entries.slice(0, 18).map((entry) => {
+      const isAudit = Boolean(entry.action);
+      const title = isAudit ? entry.action : (entry.kindLabel || entry.kind || 'Lançamento');
+      const detail = isAudit
+        ? String(entry.resource || '') + (entry.actor ? ' · ' + String(entry.actor) : '')
+        : (entry.counterparty ? String(entry.counterparty.name) + ' · ' + String(entry.counterparty.account) : '');
+      const value = isAudit ? '' : (entry.direction === 'IN' ? '+' : '−') + ' ' + (entry.amountFormatted || '');
+      return '<div class="log-item">' +
+        '<time>' + esc(when(entry.createdAt)) + '</time>' +
+        '<div><p>' + esc(title) + '</p><small>' + esc(detail) + '</small></div>' +
+        '<span class="small ' + (!isAudit && entry.direction === 'IN' ? 'in' : '') + '">' + esc(value) + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  async function loadAll(silent = false) {
+    if (!state.me) return;
+    try {
+      if (state.isAdmin) {
+        const [overview, users, audit, pix, credit, pdv, fx] = await Promise.all([
+          api('/v1/bank/admin/overview'),
+          api('/v1/bank/admin/users?limit=200'),
+          api('/v1/bank/admin/audit?limit=24'),
+          api('/v1/bank/admin/pix/keys'),
+          api('/v1/bank/credit/contracts'),
+          api('/v1/bank/pdv/sales?limit=8'),
+          api('/v1/bank/fx/wallets'),
+        ]);
+        state.overview = overview;
+        state.users = users.data;
+        state.pixKeys = pix.data;
+        state.creditLine = credit.summary.line;
+        state.contracts = credit.contracts;
+        state.pdvSales = pdv.sales;
+        state.fxWallet = (fx.wallets || []).find((wallet) => wallet.currency === 'USD') || null;
+        renderEvents(audit.data);
+      } else {
+        const [me, statement, pix, credit, pdv, fx] = await Promise.all([
+          api('/v1/bank/me'),
+          api('/v1/bank/statement?limit=12'),
+          api('/v1/bank/pix/keys'),
+          api('/v1/bank/credit/contracts'),
+          api('/v1/bank/pdv/sales?limit=8'),
+          api('/v1/bank/fx/wallets'),
+        ]);
+        state.me = me;
+        state.csrf = me.csrfToken;
+        state.pixKeys = pix.keys;
+        state.creditLine = credit.summary.line;
+        state.contracts = credit.contracts;
+        state.pdvSales = pdv.sales;
+        state.fxWallet = (fx.wallets || []).find((wallet) => wallet.currency === 'USD') || null;
+        state.overview = null;
+        renderEvents(statement.entries);
+      }
+      renderKpis();
+      renderAccounts($('#accounts-search').value);
+      renderPix();
+      renderCredit();
+      renderPdv();
+    } catch (error) {
+      if (error.status === 401) { showLogin(); return; }
+      if (!silent) toast(error.message || 'Falha ao carregar o console.', 'err');
+    }
+  }
+
+  $('#accounts-search').addEventListener('input', () => renderAccounts($('#accounts-search').value));
+  $('#accounts-body').addEventListener('click', async (event) => {
+    const button = event.target instanceof Element ? event.target.closest('[data-approve]') : null;
+    if (!button) return;
+    const id = button.getAttribute('data-approve');
+    button.disabled = true;
+    try {
+      await api('/v1/bank/admin/users/' + encodeURIComponent(id) + '/approve', { method: 'POST' });
+      toast('Cadastro aprovado e conta criada.');
+      await loadAll();
+    } catch (error) {
+      toast(error.message, 'err');
+      button.disabled = false;
+    }
+  });
+
+  function recipientPayload() {
+    const type = $('#recipient-type').value;
+    const value = $('#recipient-value').value.trim();
+    if (!value) throw new Error('Informe o favorecido.');
+    return type === 'pix' ? { pixKey: value } : { [type]: value };
+  }
+
+  $('#transfer-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    let recipient;
+    try { recipient = recipientPayload(); } catch (error) { toast(error.message, 'err'); return; }
+    const amount = parseMoney($('#transfer-amount').value);
+    if (!Number.isFinite(amount) || amount <= 0) { toast('Informe um valor válido em reais.', 'err'); return; }
+    const button = $('#transfer-submit');
+    button.disabled = true;
+    button.textContent = 'Processando…';
+    const idempotencyKey = (crypto.randomUUID ? crypto.randomUUID() : 'key-' + Date.now() + '-' + Math.random().toString(36).slice(2)) + '';
+    try {
+      const result = await api('/v1/bank/transfers', {
+        method: 'POST',
+        headers: { 'idempotency-key': idempotencyKey },
+        body: { amountCents: amount, description: $('#transfer-description').value.trim() || undefined, recipient, idempotencyKey },
+      });
+      const transfer = result.transfer;
+      $('#transfer-result').innerHTML = '<div class="receipt"><h4>Comprovante · ' + esc(transfer.channel || 'INTERNAL') + '</h4><dl class="kv">' +
+        '<dt>Valor</dt><dd class="amount">' + esc(transfer.amountFormatted) + '</dd>' +
+        '<dt>Favorecido</dt><dd>' + esc(transfer.counterparty.name) + '</dd>' +
+        '<dt>Conta destino</dt><dd class="mono">' + esc(transfer.counterparty.account) + '</dd>' +
+        '<dt>Descrição</dt><dd>' + esc(transfer.description || '—') + '</dd>' +
+        '<dt>End-to-end</dt><dd class="mono small">' + esc(transfer.endToEndId) + '</dd>' +
+        '<dt>Saldo após</dt><dd class="amount">' + esc(transfer.balanceAfterFormatted || '—') + '</dd>' +
+        '</dl><div class="row wrap" style="margin-top:10px"><span class="tag ok">idempotente</span><span class="tag info">2 partidas contábeis</span>' +
+        (result.pix ? '<span class="tag violet">Pix · ' + esc(result.pix.keyType) + '</span>' : '') + '</div></div>';
+      $('#transfer-form').reset();
+      $('#transfer-balance').value = result.account.balanceFormatted;
+      state.me.user.account.balanceCents = result.account.balanceCents;
+      state.me.user.account.balanceFormatted = result.account.balanceFormatted;
+      await loadAll(true);
+    } catch (error) {
+      if (error.status === 401) { showLogin(); return; }
+      toast(error.message, 'err');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Lançar transferência';
+    }
+  });
+
+  $('#funding-btn').addEventListener('click', async () => {
+    const amount = parseMoney($('#funding-amount').value);
+    if (!Number.isFinite(amount) || amount <= 0) { toast('Informe um valor válido para o aporte.', 'err'); return; }
+    const button = $('#funding-btn');
+    button.disabled = true;
+    try {
+      const result = await api('/v1/bank/demo/credit', { method: 'POST', body: { amountCents: amount } });
+      toast('Aporte de ' + result.transfer.amountFormatted + ' lançado pela tesouraria.');
+      $('#funding-amount').value = '';
+      if (state.me && state.me.user.account) {
+        const me = await api('/v1/bank/me');
+        state.me = me;
+        state.csrf = me.csrfToken;
+        $('#transfer-balance').value = me.user.account ? me.user.account.balanceFormatted : '—';
+      }
+      await loadAll(true);
+    } catch (error) {
+      toast(error.message, 'err');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  $('#dv-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const raw = $('#dv-value').value.trim().toUpperCase().replace(/\s/g, '');
+    const result = $('#dv-result');
+    if (!raw) { result.className = 'note err'; result.textContent = 'Informe a conta.'; return; }
+    let url;
+    const split = raw.match(/^(.*?)[-/]?([0-9X])$/);
+    if (raw.includes('-') || raw.includes('/') || /[X]$/.test(raw)) {
+      if (!split) { result.className = 'note err'; result.textContent = 'Formato inválido. Use base + DV.'; return; }
+      url = '/v1/bank/accounts/validate?base=' + encodeURIComponent(split[1].replace(/\D/g, '')) + '&digit=' + encodeURIComponent(split[2]);
+    } else {
+      url = '/v1/bank/accounts/validate?number=' + encodeURIComponent(raw.replace(/\D/g, ''));
+    }
+    try {
+      const data = await api(url);
+      const check = data.check;
+      result.className = 'note ' + (check.valid ? 'ok' : 'err');
+      result.innerHTML = '<b>Conta ' + (check.valid ? 'válida' : 'inválida') + '.</b> Base <span class="mono">' + esc(check.base) + '</span> · DV esperado <span class="mono">' + esc(check.expectedDigit) + '</span> · informado <span class="mono">' + esc(check.providedDigit) + '</span>' + (check.legacyX ? ' · convenção legada X aceita' : '');
+    } catch (error) {
+      result.className = 'note err';
+      result.textContent = error.message;
+    }
+  });
+
+  // ── Crédito: simulação, contratação, parcelas e liquidação ───────────────
+  const productSelect = $('#credit-product');
+  const installmentsSelect = $('#credit-installments');
+  function syncCreditProduct() {
+    const isAdvance = productSelect.value === 'ANTECIPACAO';
+    installmentsSelect.disabled = isAdvance;
+    if (isAdvance) installmentsSelect.value = '1';
+  }
+  productSelect.addEventListener('change', syncCreditProduct);
+
+  function contractWidget(result) {
+    const c = result.contract;
+    return '<div class="receipt" style="margin-top:12px"><h4>Contrato ' + esc(c.contractNumber) + ' · ' + esc(c.status) + '</h4><dl class="kv">' +
+      '<dt>Liberado agora</dt><dd class="amount">' + esc(c.principalFormatted) + '</dd>' +
+      '<dt>Saldo da conta</dt><dd class="amount">' + esc(result.account.balanceFormatted) + '</dd>' +
+      '<dt>Total a pagar</dt><dd class="amount">' + esc(c.totalDueFormatted) + '</dd>' +
+      '<dt>Custo</dt><dd>' + esc(c.interestFormatted) + ' · ' + esc(c.monthlyRatePercent) + '% a.m.</dd>' +
+      '<dt>Parcelas</dt><dd>' + esc(c.installments) + 'x · 1º venc. ' + esc(c.nextDueDate || '—') + '</dd>' +
+      '<dt>Transferência</dt><dd class="mono small">' + esc(result.transfer.endToEndId || result.transfer.id) + '</dd>' +
+      '</dl><div class="row wrap" style="margin-top:10px"><span class="tag ok">desembolso no ledger</span>' +
+      '<span class="tag info">channel ' + esc(result.transfer.channel) + '</span></div></div>';
+  }
+
+  async function creditRequest(kind) {
+    const amount = parseMoney($('#credit-amount').value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showNote('#credit-result', 'Informe um valor válido em reais.', 'err');
+      return;
+    }
+    const product = productSelect.value;
+    const installments = product === 'ANTECIPACAO' ? 1 : Number(installmentsSelect.value);
+    if (kind === 'quote') {
+      try {
+        const result = await api('/v1/bank/credit/quote', {
+          method: 'POST',
+          body: { product, amountCents: amount, installments },
+        });
+        renderQuote(result.quote);
+      } catch (error) {
+        showNote('#credit-result', error.message || 'Falha na simulação.', 'err');
+      }
+      return;
+    }
+    const button = $('#credit-submit');
+    button.disabled = true;
+    button.textContent = 'Contratando…';
+    const idempotencyKey = (crypto.randomUUID ? crypto.randomUUID() : 'key-' + Date.now() + '-' + Math.random().toString(36).slice(2)) + '';
+    try {
+      const result = await api('/v1/bank/credit/contracts', {
+        method: 'POST',
+        headers: { 'idempotency-key': idempotencyKey },
+        body: { product, amountCents: amount, installments, idempotencyKey },
+      });
+      $('#credit-result').innerHTML = contractWidget(result);
+      $('#transfer-balance').value = result.account.balanceFormatted;
+      $('#credit-amount').value = '';
+      await loadAll(true);
+    } catch (error) {
+      if (error.status === 401) { showLogin(); return; }
+      showNote('#credit-result', error.message || 'Falha ao contratar crédito.', 'err');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Contratar crédito';
+    }
+  }
+
+  $('#credit-quote-btn').addEventListener('click', () => void creditRequest('quote'));
+  $('#credit-form').addEventListener('submit', (event) => { event.preventDefault(); void creditRequest('create'); });
+
+  $('#credit-contracts').addEventListener('click', async (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const payButton = target ? target.closest('[data-credit-pay]') : null;
+    const settleButton = target ? target.closest('[data-credit-settle]') : null;
+    if (!payButton && !settleButton) return;
+    const button = payButton || settleButton;
+    button.disabled = true;
+    try {
+      if (payButton) {
+        const id = payButton.getAttribute('data-credit-pay');
+        const number = Number(payButton.getAttribute('data-number') || 1);
+        const result = await api('/v1/bank/credit/contracts/' + encodeURIComponent(id) + '/installments/' + number + '/pay', { method: 'POST' });
+        showNote('#credit-result', 'Parcela ' + number + ' paga · ' + result.transfer.amountFormatted + ' · contrato ' + result.contract.status + '.');
+      } else {
+        const id = settleButton.getAttribute('data-credit-settle');
+        if (!window.confirm('Liquidar antecipadamente este contrato? Juros futuros serão descontados.')) {
+          button.disabled = false;
+          return;
+        }
+        const result = await api('/v1/bank/credit/contracts/' + encodeURIComponent(id) + '/settle', { method: 'POST' });
+        showNote('#credit-result', 'Liquidado por ' + result.amountFormatted + ' · desconto de ' + result.discountFormatted + ' em juros futuros.');
+      }
+      await loadAll(true);
+    } catch (error) {
+      if (error.status === 401) { showLogin(); return; }
+      showNote('#credit-result', error.message || 'Falha na operação de crédito.', 'err');
+      button.disabled = false;
+    }
+  });
+
+  // ── PDV: venda presencial com NFC-e ─────────────────────────────────────
+  $('#pdv-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const amount = parseMoney($('#pdv-amount').value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showNote('#pdv-result', 'Informe um valor válido em reais.', 'err');
+      return;
+    }
+    const button = $('#pdv-submit');
+    button.disabled = true;
+    button.textContent = 'Autorizando…';
+    try {
+      const result = await api('/v1/bank/pdv/sales', {
+        method: 'POST',
+        body: {
+          amountCents: amount,
+          method: $('#pdv-method').value,
+          description: $('#pdv-description').value.trim() || undefined,
+        },
+      });
+      const sale = result.sale;
+      const fiscal = sale.fiscal;
+      $('#pdv-result').innerHTML = '<div class="receipt" style="margin-top:12px"><h4>Venda aprovada · ' + esc(sale.method) + '</h4><dl class="kv">' +
+        '<dt>Bruto</dt><dd class="amount">' + esc(sale.amountFormatted) + '</dd>' +
+        '<dt>Taxa do adquirente</dt><dd>' + esc(sale.feeFormatted) + '</dd>' +
+        '<dt>Líquido creditado</dt><dd class="amount">' + esc(sale.netFormatted) + '</dd>' +
+        '<dt>NFC-e</dt><dd>' + (fiscal ? esc(fiscal.status) + ' · <span class="mono small">' + esc(fiscal.accessKey) + '</span>' : 'sem nota') + '</dd>' +
+        '<dt>NSU / autorização</dt><dd class="mono small">' + esc(sale.nsu || '—') + ' · ' + esc(sale.authorizationCode || '—') + '</dd>' +
+        '</dl><div class="row wrap" style="margin-top:10px"><span class="tag ok">liquidação channel PDV</span>' +
+        (fiscal ? '<span class="tag ' + (fiscal.contingency ? 'warn' : 'ok') + '">' + (fiscal.contingency ? 'contingência' : 'autorizada') + '</span>' : '') +
+        '</div></div>';
+      $('#transfer-balance').value = result.account.balanceFormatted;
+      $('#pdv-amount').value = '';
+      $('#pdv-description').value = '';
+      await loadAll(true);
+    } catch (error) {
+      if (error.status === 401) { showLogin(); return; }
+      showNote('#pdv-result', error.message || 'Falha na venda do PDV.', 'err');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Vender e emitir NFC-e';
+    }
+  });
+
+  $('#refresh-btn').addEventListener('click', () => loadAll());
+
+  async function boot() {
+    try {
+      state.status = await api('/v1/bank/status');
+      $('#env-label').textContent = state.status.demoMode ? 'demo · tesouraria ativa' : 'produção';
+      $('#env-pill').querySelector('i').style.background = state.status.demoMode ? 'var(--orange)' : 'var(--green)';
+    } catch {
+      state.status = { demoMode: false };
+      $('#env-label').textContent = 'conexão limitada';
+    }
+    try {
+      const me = await api('/v1/bank/me');
+      showApp(me);
+      await loadAll();
+    } catch {
+      showLogin();
+    }
+  }
+
+  // Malha neural discreta, sem bibliotecas e respeitando redução de movimento.
+  (function mesh() {
+    const canvas = $('#mesh');
+    if (!canvas || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let width = 0, height = 0, nodes = [], raf = 0, last = 0;
+    const build = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.4);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const total = Math.max(18, Math.min(46, Math.round((width * height) / 40000)));
+      nodes = Array.from({ length: total }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.14,
+        vy: (Math.random() - 0.5) * 0.14,
+        r: 1 + Math.random() * 1.3,
+      }));
+    };
+    const paint = () => {
+      ctx.clearRect(0, 0, width, height);
+      const reach = 140;
+      for (let i = 0; i < nodes.length; i += 1) {
+        for (let j = i + 1; j < nodes.length; j += 1) {
+          const a = nodes[i], b = nodes[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d > reach) continue;
+          ctx.strokeStyle = 'rgba(10,99,255,' + ((1 - d / reach) * 0.10).toFixed(3) + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+      nodes.forEach((n, index) => {
+        ctx.fillStyle = index % 7 === 0 ? 'rgba(255,122,24,.28)' : 'rgba(10,99,255,.24)';
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    };
+    const step = (now) => {
+      raf = requestAnimationFrame(step);
+      if (now - last < 40) return;
+      last = now;
+      nodes.forEach((n) => {
+        n.x += n.vx; n.y += n.vy;
+        if (n.x < -10) n.x = width + 10; if (n.x > width + 10) n.x = -10;
+        if (n.y < -10) n.y = height + 10; if (n.y > height + 10) n.y = -10;
+      });
+      paint();
+    };
+    build();
+    window.addEventListener('resize', build);
+    raf = requestAnimationFrame(step);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) cancelAnimationFrame(raf);
+      else raf = requestAnimationFrame(step);
+    });
+  })();
+
+  void boot();
+})();
+</script>
+</body>
+</html>

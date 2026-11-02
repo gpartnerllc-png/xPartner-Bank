@@ -1,0 +1,62 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "xpartner-bank-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "DEMO_MODE": "true",
+    "APP_ORIGIN": "https://xpartner-bank-edge.contatodroppfy.workers.dev",
+    "SESSION_TTL_SECONDS": "28800",
+    "RSFN_ISPB": "99999999"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "xpartner-bank",
+      "database_id": "2bbeea7f-0f07-4dec-8bcb-1152a68660e6",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "d3f7a791713342e4a0e2a04f3f5e4a8b"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "RECEIPTS",
+      "bucket_name": "xpartner-bank-receipts"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EVENTS",
+        "queue": "xpartner-bank-events"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "xpartner-bank-events",
+        "max_batch_size": 25,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "xpartner-bank-events-dlq"
+      }
+    ]
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "assets": {
+    "directory": "../public",
+    "binding": "ASSETS"
+  }
+}

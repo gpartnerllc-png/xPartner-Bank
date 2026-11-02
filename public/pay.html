@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Checkout — xPartner Bank</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%235ef2b2'/%3E%3Cpath d='M18 18l28 28M46 18L18 46' stroke='%2307110d' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#050908;
+    --card:#ffffff;
+    --ink:#0d1a15;
+    --ink-soft:#4d6158;
+    --ink-dim:#7d8f87;
+    --mint:#12b886;
+    --mint-deep:#0c8f69;
+    --lime:#c9f76f;
+    --line:#e7ece9;
+    --line-soft:#f1f5f3;
+    --radius:20px;
+    --mono:"SFMono-Regular",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;padding:28px 16px 40px;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    background-image:
+      radial-gradient(1000px 560px at 50% -20%,rgba(94,242,178,.16),transparent 62%),
+      radial-gradient(700px 500px at -10% 70%,rgba(124,199,255,.07),transparent 58%);
+    display:flex;flex-direction:column;align-items:center;
+  }
+  a{color:var(--mint-deep)}
+  button{font-family:inherit}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;color:#e9f5ef}
+  .brand .mark{
+    width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:900;font-size:18px;
+    background:linear-gradient(135deg,#5ef2b2,#c9f76f);color:#04120c;box-shadow:0 10px 26px rgba(94,242,178,.28);
+  }
+  .brand strong{font-size:14px;letter-spacing:.1px}
+  .brand strong span{color:#5ef2b2}
+  .brand small{display:block;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#5d766c;margin-top:1px}
+
+  .checkout{width:min(460px,100%);background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:0 40px 100px -30px rgba(0,0,0,.75)}
+  .merchant{display:flex;align-items:center;gap:12px;padding:20px 22px;background:linear-gradient(135deg,#f3fbf7,#eef7f2);border-bottom:1px solid var(--line)}
+  .merchant .avatar{
+    width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-weight:800;font-size:15px;
+    color:#0c8f69;background:#ffffff;border:1px solid #d8ece3;flex:none;
+  }
+  .merchant b{display:block;font-size:13px;font-weight:700;line-height:1.3}
+  .merchant small{display:block;font-size:11px;color:var(--ink-dim);margin-top:2px}
+  .merchant .secure{margin-left:auto;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--mint-deep);display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .merchant .secure svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+  .amount{padding:24px 22px 18px;text-align:center;border-bottom:1px solid var(--line-soft)}
+  .amount .label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+  .amount .value{font-size:34px;font-weight:750;letter-spacing:-1.2px;margin:8px 0 4px;font-variant-numeric:tabular-nums}
+  .amount .desc{font-size:12.5px;color:var(--ink-soft);margin:0;line-height:1.5}
+  .amount .meta{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+  .body{padding:20px 22px 24px}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:650;padding:5px 10px;border-radius:999px}
+  .status-pill.active{background:#e6f8f0;color:#0c8f69}
+  .status-pill.paid{background:#e6f8f0;color:#0c8f69}
+  .status-pill.closed{background:#fdeeee;color:#c14343}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  .section-label{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-dim);margin:0 0 8px}
+  .code{
+    display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:14px;background:var(--line-soft);
+    padding:13px 14px;
+  }
+  .code pre{
+    margin:0;font-family:var(--mono);font-size:10.5px;line-height:1.55;color:var(--ink);word-break:break-all;
+    max-height:92px;overflow:auto;white-space:pre-wrap;
+  }
+  .code .code-actions{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .code .hint{font-size:10.5px;color:var(--ink-dim);line-height:1.4}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:11px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);font-size:12.5px;font-weight:600;padding:10px 15px;cursor:pointer;transition:.15s;
+  }
+  .btn:hover{border-color:#cfe0d8;background:#fbfdfc}
+  .btn.primary{background:linear-gradient(135deg,var(--mint),#17c793);border-color:transparent;color:#04120c;font-weight:750}
+  .btn.primary:hover{filter:brightness(1.04)}
+  .btn.block{width:100%;padding:13px}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+  .steps{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .steps li{display:flex;gap:10px;font-size:11.5px;color:var(--ink-soft);line-height:1.5}
+  .steps .n{width:19px;height:19px;border-radius:50%;background:#eef7f2;color:#0c8f69;display:grid;place-items:center;font-size:10px;font-weight:700;flex:none;margin-top:1px}
+
+  .receipt{display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 4px}
+  .receipt .check{
+    width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#e6f8f0;color:#0c8f69;margin-bottom:12px;
+  }
+  .receipt .check svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .receipt h2{margin:0;font-size:17px;letter-spacing:-.2px}
+  .receipt p{margin:6px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.55}
+  .receipt .kv{margin-top:16px;width:100%;border-top:1px solid var(--line);padding-top:12px;display:grid;grid-template-columns:1fr auto;gap:7px;font-size:11.5px;text-align:left}
+  .receipt .kv dt{color:var(--ink-dim)}
+  .receipt .kv dd{margin:0;font-family:var(--mono);font-size:10.5px;word-break:break-all;text-align:right}
+
+  .closed-state{text-align:center;padding:10px 0}
+  .closed-state h2{margin:0 0 6px;font-size:16px}
+  .closed-state p{margin:0;font-size:12px;color:var(--ink-soft);line-height:1.5}
+
+  .error-state{text-align:center;padding:16px 0}
+  .error-state h2{margin:0 0 6px;font-size:16px}
+  .error-state p{margin:0;font-size:12px;color:var(--ink-soft)}
+  .skeleton{height:12px;border-radius:6px;background:linear-gradient(90deg,#eef2f0,#f7faf9,#eef2f0);background-size:200% 100%;animation:shimmer 1.2s infinite}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  .trust{width:min(460px,100%);display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px;color:#6c8378;font-size:10px;text-align:center;flex-wrap:wrap}
+  .trust span{display:inline-flex;align-items:center;gap:5px}
+  .trust svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  footer{margin-top:18px;color:#41564d;font-size:10px;letter-spacing:.04em;text-align:center;line-height:1.6}
+  footer a{color:#5ef2b2}
+
+  .toast-stack{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:50;max-width:320px}
+  .toast{display:flex;gap:8px;align-items:flex-start;background:#0c1814;color:#e9f5ef;border:1px solid rgba(94,242,178,.3);border-radius:11px;padding:10px 12px;font-size:11.5px;box-shadow:0 18px 40px -18px #000}
+  .toast.err{border-color:rgba(255,123,123,.4)}
+  .toast .tdot{width:6px;height:6px;border-radius:50%;background:#5ef2b2;margin-top:4px;flex:none}
+
+  .demo-badge{display:none;font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#8a6a14;background:#fff6d9;border:1px solid #f2e2ac;padding:4px 9px;border-radius:999px}
+  .demo-badge.on{display:inline-flex}
+</style>
+<style id="xp-theme-inter-neon">
+  /* Checkout com assinatura Inter laranja + Neon */
+  body{background-color:#050a16!important;background-image:
+    radial-gradient(1000px 600px at 50% -20%,rgba(255,122,0,.16),transparent 62%),
+    radial-gradient(760px 520px at -10% 72%,rgba(0,255,163,.09),transparent 58%),
+    radial-gradient(640px 480px at 108% 40%,rgba(34,211,238,.08),transparent 60%),
+    linear-gradient(180deg,#050a16,#03060f)!important;background-attachment:fixed}
+  .brand .mark{background:linear-gradient(135deg,#ff7a00,#ffa040 52%,#00ffa3)!important;color:#04101e!important;box-shadow:0 10px 28px rgba(255,122,0,.32)!important}
+  .brand strong span{color:#00ffa3!important}
+  .brand small{color:#8fa4bd!important}
+  .checkout{border:1px solid rgba(255,122,0,.18)!important;box-shadow:0 40px 110px -32px rgba(0,0,0,.82),0 0 0 1px rgba(0,255,163,.04)!important}
+  .merchant{background:linear-gradient(135deg,#fff7ef,#f1fbf6)!important}
+  .merchant .avatar{color:#c2410c!important;border-color:#ffd9bd!important;background:#fff!important}
+  .merchant .secure{color:#c2410c!important}
+  .status-pill.active,.status-pill.paid{background:#e8fff5!important;color:#00875a!important}
+  .btn.primary{background:linear-gradient(135deg,#ff7a00,#ffa040)!important;color:#10131a!important;font-weight:750;box-shadow:0 12px 26px -12px rgba(255,122,0,.55)!important}
+  .steps .n{background:#fff1e6!important;color:#c2410c!important}
+  .receipt .check{background:#e8fff5!important;color:#00a86b!important}
+  .trust{color:#93a4bd!important}
+  footer{color:#7c8fa8!important}
+  ::selection{background:rgba(255,122,0,.3)}
+</style>
+</head>
+<body>
+  <div class="brand">
+    <div class="mark">X</div>
+    <div>
+      <strong>xPartner <span>Bank</span></strong>
+      <small>Checkout seguro</small>
+    </div>
+  </div>
+
+  <main class="checkout" id="checkout">
+    <div class="merchant" id="merchantBar">
+      <div class="avatar" id="merchantAvatar">XP</div>
+      <div style="min-width:0">
+        <b id="merchantName">Carregando…</b>
+        <small id="merchantCity">—</small>
+      </div>
+      <span class="secure">
+        <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        Seguro
+      </span>
+    </div>
+
+    <div class="amount">
+      <div class="label">Valor total</div>
+      <div class="value" id="amountValue"><span class="skeleton" style="display:inline-block;width:150px;height:30px"></span></div>
+      <p class="desc" id="description">—</p>
+      <div class="meta">
+        <span class="status-pill active" id="statusPill" style="display:none"><span class="dot"></span><span id="statusText">Ativo</span></span>
+        <span class="demo-badge" id="demoBadge">Ambiente demo</span>
+      </div>
+    </div>
+
+    <div class="body" id="body">
+      <div id="loading">
+        <div class="skeleton" style="width:120px;margin-bottom:10px"></div>
+        <div class="code"><div class="skeleton" style="width:100%;margin-bottom:7px"></div><div class="skeleton" style="width:70%"></div></div>
+      </div>
+      <div id="content" style="display:none"></div>
+    </div>
+  </main>
+
+  <div class="trust">
+    <span><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.4 8-8 9-4.6-1-8-4-8-9V7z"/></svg> Dados protegidos</span>
+    <span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Conexão criptografada</span>
+    <span><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Conciliação automática</span>
+  </div>
+  <footer>
+    xPartner Bank · pagamento processado em ambiente regulado.<br />
+    Este endereço é exclusivo para conclusão do pagamento; não compartilhe seus dados por outros canais.
+  </footer>
+
+  <div class="toast-stack" id="toasts"></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (sel) => document.querySelector(sel);
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = (cents) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
+  const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
+  const fmtDateTime = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+  const code = decodeURIComponent(location.pathname.split('/').pop() || '');
+  const state = { demoMode: false, detail: null, timer: null, busy: false };
+
+  function toast(message, kind = 'ok') {
+    const el = document.createElement('div');
+    el.className = 'toast' + (kind === 'err' ? ' err' : '');
+    el.innerHTML = '<span class="tdot"></span><span>' + esc(message) + '</span>';
+    $('#toasts').appendChild(el);
+    setTimeout(() => { el.style.transition = '.3s'; el.style.opacity = '0'; }, 3600);
+    setTimeout(() => el.remove(), 4100);
+  }
+
+  async function api(path, options = {}) {
+    const res = await fetch(path, {
+      method: options.method || 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      body: options.payload ? JSON.stringify(options.payload) : undefined,
+    });
+    const text = await res.text();
+    let body = null;
+    try { body = text ? JSON.parse(text) : null; } catch { body = null; }
+    if (!res.ok) {
+      const error = new Error((body && body.error && body.error.message) || 'Não foi possível carregar o pagamento.');
+      error.status = res.status;
+      throw error;
+    }
+    return body;
+  }
+
+  async function copy(value, message) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast(message || 'Código copiado');
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = value;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+      toast(message || 'Código copiado');
+    }
+  }
+
+  function paintMerchant(merchant) {
+    if (!merchant) return;
+    const name = merchant.tradeName || 'Estabelecimento';
+    const initials = name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+    $('#merchantAvatar').textContent = initials || 'XP';
+    $('#merchantName').textContent = name;
+    $('#merchantCity').textContent = [merchant.city, merchant.uf].filter(Boolean).join('/') || 'Pagamento online';
+  }
+
+  function statusPill(status) {
+    const pill = $('#statusPill');
+    const text = $('#statusText');
+    pill.className = 'status-pill ' + (status === 'PAID' ? 'paid' : status === 'CANCELED' ? 'closed' : 'active');
+    text.textContent = status === 'PAID' ? 'Pago' : status === 'CANCELED' ? 'Encerrado' : 'Aguardando pagamento';
+    pill.style.display = 'inline-flex';
+  }
+
+  function renderPaid(detail) {
+    const link = detail.link;
+    $('#content').innerHTML = '' +
+      '<div class="receipt">' +
+        '<div class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>' +
+        '<h2>Pagamento confirmado</h2>' +
+        '<p>O estabelecimento já foi notificado.<br />Não é necessário pagar novamente.</p>' +
+        '<dl class="kv">' +
+          '<dt>Valor</dt><dd>' + esc(link.amountFormatted) + '</dd>' +
+          '<dt>Confirmado em</dt><dd>' + esc(fmtDateTime(link.updatedAt)) + '</dd>' +
+          '<dt>Código do link</dt><dd>' + esc(link.code) + '</dd>' +
+          (link.transactionId ? '<dt>Transação</dt><dd>' + esc(link.transactionId) + '</dd>' : '') +
+        '</dl>' +
+      '</div>';
+  }
+
+  function renderClosed(detail) {
+    const link = detail.link;
+    $('#content').innerHTML = '' +
+      '<div class="closed-state">' +
+        '<h2>Este link não está mais disponível</h2>' +
+        '<p>' + (link.status === 'CANCELED' ? 'O link foi cancelado ou expirou. Solicite um novo link ao estabelecimento.' : 'Não foi possível concluir o pagamento neste link.') + '</p>' +
+        (link.amountFormatted ? '<p style="margin-top:10px" class="mono">' + esc(link.amountFormatted) + '</p>' : '') +
+      '</div>';
+  }
+
+  function renderPix(detail) {
+    const link = detail.link;
+    const pix = detail.pix;
+    if (!pix) return renderClosed(detail);
+    $('#content').innerHTML = '' +
+      '<p class="section-label">Pix copia e cola</p>' +
+      '<div class="code">' +
+        '<pre id="pixPayload">' + esc(pix.emvPayload) + '</pre>' +
+        '<div class="code-actions">' +
+          '<span class="hint">Expira em ' + esc(fmtDateTime(pix.expiresAt)) + '</span>' +
+          '<button class="btn" id="copyPix"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/></svg>Copiar código</button>' +
+        '</div>' +
+      '</div>' +
+      '<ol class="steps">' +
+        '<li><span class="n">1</span><span>Abra o aplicativo do seu banco e escolha <b>Pix &rsaquo; Copia e cola</b>.</span></li>' +
+        '<li><span class="n">2</span><span>Cole o código acima e confira o valor de <b>' + esc(link.amountFormatted) + '</b>.</span></li>' +
+        '<li><span class="n">3</span><span>Confirme o pagamento. Esta página é atualizada automaticamente.</span></li>' +
+      '</ol>' +
+      '<div style="margin-top:18px">' +
+        (state.demoMode ? '<button class="btn primary block" id="demoPay">Simular pagamento (demo)</button>' : '') +
+      '</div>';
+    $('#copyPix').addEventListener('click', () => copy(pix.emvPayload, 'Código Pix copiado'));
+    const demo = $('#demoPay');
+    if (demo) demo.addEventListener('click', payDemo);
+  }
+
+  function renderBoleto(detail) {
+    const link = detail.link;
+    const boleto = detail.boleto;
+    if (!boleto) return renderClosed(detail);
+    $('#content').innerHTML = '' +
+      '<p class="section-label">Linha digitável do boleto</p>' +
+      '<div class="code">' +
+        '<pre>' + esc(boleto.digitableLineFormatted) + '</pre>' +
+        '<div class="code-actions">' +
+          '<span class="hint">Vence em ' + esc(fmtDate(boleto.dueDate + 'T12:00:00Z')) + '</span>' +
+          '<button class="btn" id="copyLine"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/></svg>Copiar linha</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="section-label" style="margin-top:16px">Código de barras</p>' +
+      '<div class="code"><pre>' + esc(boleto.barcode) + '</pre></div>' +
+      '<ol class="steps">' +
+        '<li><span class="n">1</span><span>Pague pelo internet banking, aplicativo ou caixa eletrônico.</span></li>' +
+        '<li><span class="n">2</span><span>O pagador é <b>' + esc(boleto.payerName) + '</b>.</span></li>' +
+        '<li><span class="n">3</span><span>A baixa é conciliada automaticamente após o processamento bancário.</span></li>' +
+      '</ol>' +
+      '<div style="margin-top:18px">' +
+        (state.demoMode ? '<button class="btn primary block" id="demoPay">Simular pagamento (demo)</button>' : '') +
+      '</div>';
+    $('#copyLine').addEventListener('click', () => copy(boleto.digitableLineFormatted, 'Linha digitável copiada'));
+    const demo = $('#demoPay');
+    if (demo) demo.addEventListener('click', payDemo);
+  }
+
+  function render(detail) {
+    state.detail = detail;
+    state.demoMode = Boolean(detail.demoMode);
+    paintMerchant(detail.merchant);
+    $('#amountValue').textContent = detail.link.amountFormatted;
+    $('#description').textContent = detail.link.description || 'Pagamento via xPartner Bank';
+    $('#demoBadge').classList.toggle('on', state.demoMode);
+    statusPill(detail.link.status);
+
+    $('#loading').style.display = 'none';
+    $('#content').style.display = '';
+    if (detail.link.status === 'PAID') return renderPaid(detail);
+    if (detail.link.status === 'CANCELED') return renderClosed(detail);
+    if (detail.link.kind === 'PIX') return renderPix(detail);
+    return renderBoleto(detail);
+  }
+
+  async function load(silent) {
+    try {
+      const detail = await api('/v1/public/links/' + encodeURIComponent(code));
+      render(detail);
+    } catch (error) {
+      if (silent) return;
+      $('#amountValue').textContent = '—';
+      $('#description').textContent = '';
+      $('#loading').style.display = 'none';
+      $('#content').style.display = '';
+      $('#content').innerHTML = '<div class="error-state"><h2>Link não encontrado</h2><p>' +
+        esc(error.status === 404 ? 'Confira o endereço recebido ou solicite um novo link ao estabelecimento.' : error.message) +
+        '</p></div>';
+    }
+  }
+
+  async function payDemo() {
+    if (state.busy) return;
+    state.busy = true;
+    const button = $('#demoPay');
+    if (button) { button.disabled = true; button.textContent = 'Processando…'; }
+    try {
+      const detail = await api('/v1/public/links/' + encodeURIComponent(code) + '/pay', { method: 'POST' });
+      toast('Pagamento aprovado');
+      render(detail);
+      stopPolling();
+    } catch (error) {
+      toast(error.message, 'err');
+      if (button) { button.disabled = false; button.textContent = 'Simular pagamento (demo)'; }
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  function stopPolling() {
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  }
+
+  load(false);
+  state.timer = setInterval(() => {
+    if (!state.detail || state.detail.link.status !== 'ACTIVE') return stopPolling();
+    load(true);
+  }, 8000);
+})();
+</script>
+</body>
+</html>
