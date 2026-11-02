@@ -5,6 +5,7 @@ import { FiscalWorker } from '../src/modules/fiscal-worker.ts';
 import { SettlementWorker } from '../src/modules/settlement-worker.ts';
 import { NotificationHub } from '../src/modules/notifications.ts';
 import { TokenizationHub } from '../src/modules/tokenization.ts';
+import { Web3Hub } from '../src/modules/web3.ts';
 import { CustomerService } from '../src/modules/customers.ts';
 import { BillingService } from '../src/modules/billing.ts';
 import { SubscriptionService } from '../src/modules/subscriptions.ts';
@@ -37,6 +38,7 @@ export async function buildTestServer() {
   const settlements = new SettlementWorker(db, config);
   const hub = new NotificationHub(config);
   const tokenization = new TokenizationHub(db);
+  const web3 = new Web3Hub(db);
   const customers = new CustomerService(db);
   const billing = new BillingService(db, transactions, pix, customers);
   const subscriptions = new SubscriptionService(db, billing, pix, customers);
@@ -60,6 +62,7 @@ export async function buildTestServer() {
     settlements,
     hub,
     tokenization,
+    web3,
     customers,
     billing,
     subscriptions,
@@ -88,6 +91,7 @@ export async function buildTestServer() {
     settlements,
     hub,
     tokenization,
+    web3,
     customers,
     billing,
     subscriptions,

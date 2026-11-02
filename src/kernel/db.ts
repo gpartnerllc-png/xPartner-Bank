@@ -915,6 +915,188 @@ CREATE TABLE IF NOT EXISTS bank_fx_entries (
 CREATE INDEX IF NOT EXISTS idx_bank_fx_entries_wallet ON bank_fx_entries(wallet_id, created_at DESC);
 `;
 
+/**
+ * Camada Web3 institucional: appchains, oráculo, DVP atômico, crédito agro com colateral
+ * tokenizado, atestações de conformidade com nullifier, sessões de agente e paymaster.
+ * Tudo aditivo: nenhuma tabela anterior é alterada ou removida.
+ */
+const SCHEMA_V10 = `
+CREATE TABLE IF NOT EXISTS web3_networks (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  chain_id INTEGER NOT NULL UNIQUE CHECK (chain_id > 0),
+  kind TEXT NOT NULL CHECK (kind IN ('APPCHAIN','SUBNET','L2','L1')),
+  rpc_url TEXT NOT NULL,
+  explorer_url TEXT,
+  native_symbol TEXT NOT NULL DEFAULT 'BRLT',
+  bridge_contract TEXT,
+  token_contract TEXT,
+  dvp_contract TEXT,
+  paymaster_contract TEXT,
+  finality_seconds INTEGER NOT NULL DEFAULT 2 CHECK (finality_seconds > 0),
+  governance TEXT NOT NULL DEFAULT 'XPARTNER_COUNCIL',
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','PAUSED')),
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS web3_oracle_feeds (
+  symbol TEXT PRIMARY KEY,
+  source TEXT NOT NULL CHECK (source IN ('CHAINLINK','BAND','XPARTNER')),
+  decimals INTEGER NOT NULL DEFAULT 2 CHECK (decimals BETWEEN 0 AND 8),
+  max_age_seconds INTEGER NOT NULL DEFAULT 3600 CHECK (max_age_seconds > 0),
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','PAUSED')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS web3_oracle_prices (
+  id TEXT PRIMARY KEY,
+  symbol TEXT NOT NULL REFERENCES web3_oracle_feeds(symbol),
+  price_units INTEGER NOT NULL CHECK (price_units > 0),
+  round_id INTEGER NOT NULL CHECK (round_id > 0),
+  source TEXT NOT NULL,
+  published_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (symbol, round_id)
+);
+CREATE INDEX IF NOT EXISTS idx_web3_oracle_prices_symbol
+  ON web3_oracle_prices(symbol, published_at DESC);
+
+CREATE TABLE IF NOT EXISTS web3_dvp_offers (
+  id TEXT PRIMARY KEY,
+  network_id TEXT NOT NULL REFERENCES web3_networks(id),
+  maker_id TEXT NOT NULL,
+  taker_id TEXT,
+  kind TEXT NOT NULL CHECK (kind IN ('CASH_FOR_TOKEN','TOKEN_FOR_TOKEN')),
+  sell_symbol TEXT NOT NULL,
+  sell_units INTEGER NOT NULL CHECK (sell_units > 0),
+  buy_symbol TEXT,
+  buy_units INTEGER,
+  cash_cents INTEGER NOT NULL DEFAULT 0 CHECK (cash_cents >= 0),
+  fee_bps INTEGER NOT NULL DEFAULT 0 CHECK (fee_bps BETWEEN 0 AND 1000),
+  nonce TEXT NOT NULL,
+  digest TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','FILLED','CANCELLED','EXPIRED')),
+  created_at TEXT NOT NULL,
+  settled_at TEXT,
+  UNIQUE (maker_id, nonce)
+);
+CREATE INDEX IF NOT EXISTS idx_web3_dvp_offers_status
+  ON web3_dvp_offers(status, expires_at);
+
+CREATE TABLE IF NOT EXISTS web3_dvp_trades (
+  id TEXT PRIMARY KEY,
+  offer_id TEXT NOT NULL UNIQUE REFERENCES web3_dvp_offers(id),
+  network_id TEXT NOT NULL,
+  maker_id TEXT NOT NULL,
+  taker_id TEXT NOT NULL,
+  sell_symbol TEXT NOT NULL,
+  sell_units INTEGER NOT NULL CHECK (sell_units > 0),
+  buy_symbol TEXT,
+  buy_units INTEGER,
+  cash_cents INTEGER NOT NULL DEFAULT 0 CHECK (cash_cents >= 0),
+  fee_cents INTEGER NOT NULL DEFAULT 0 CHECK (fee_cents >= 0),
+  tx_digest TEXT NOT NULL,
+  anchor_height INTEGER,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_web3_dvp_trades_created
+  ON web3_dvp_trades(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS web3_agro_contracts (
+  id TEXT PRIMARY KEY,
+  network_id TEXT NOT NULL REFERENCES web3_networks(id),
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  collateral_symbol TEXT NOT NULL,
+  collateral_units INTEGER NOT NULL CHECK (collateral_units > 0),
+  principal_cents INTEGER NOT NULL CHECK (principal_cents > 0),
+  outstanding_cents INTEGER NOT NULL CHECK (outstanding_cents >= 0),
+  interest_bps INTEGER NOT NULL CHECK (interest_bps BETWEEN 0 AND 20000),
+  ltv_bps INTEGER NOT NULL CHECK (ltv_bps BETWEEN 1 AND 9000),
+  liquidation_ltv_bps INTEGER NOT NULL CHECK (liquidation_ltv_bps BETWEEN 1 AND 10000),
+  liquidation_bonus_bps INTEGER NOT NULL DEFAULT 2000 CHECK (liquidation_bonus_bps BETWEEN 0 AND 5000),
+  oracle_symbol TEXT NOT NULL REFERENCES web3_oracle_feeds(symbol),
+  status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','REPAID','LIQUIDATED')),
+  due_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  closed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_web3_agro_status
+  ON web3_agro_contracts(status, due_at);
+
+CREATE TABLE IF NOT EXISTS web3_zk_attestations (
+  id TEXT PRIMARY KEY,
+  commitment TEXT NOT NULL,
+  claim_type TEXT NOT NULL,
+  predicate TEXT NOT NULL CHECK (predicate IN ('GTE','LTE','EQ')),
+  threshold INTEGER NOT NULL,
+  issuer TEXT NOT NULL,
+  attestation_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','REVOKED')),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_web3_zk_attestations_commitment
+  ON web3_zk_attestations(commitment, claim_type, status);
+
+CREATE TABLE IF NOT EXISTS web3_zk_nullifiers (
+  nullifier TEXT PRIMARY KEY,
+  attestation_id TEXT NOT NULL REFERENCES web3_zk_attestations(id),
+  purpose TEXT NOT NULL,
+  relying_party TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_web3_zk_nullifiers_attestation
+  ON web3_zk_nullifiers(attestation_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS web3_agent_sessions (
+  id TEXT PRIMARY KEY,
+  policy_id TEXT NOT NULL REFERENCES agent_policies(id),
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  network_id TEXT NOT NULL REFERENCES web3_networks(id),
+  agent TEXT NOT NULL,
+  key_hash TEXT NOT NULL UNIQUE,
+  allowed_selectors TEXT NOT NULL,
+  spend_cap_cents INTEGER NOT NULL CHECK (spend_cap_cents > 0),
+  spent_cents INTEGER NOT NULL DEFAULT 0 CHECK (spent_cents >= 0),
+  expires_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','REVOKED','EXPIRED')),
+  created_at TEXT NOT NULL,
+  revoked_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_web3_agent_sessions_merchant
+  ON web3_agent_sessions(merchant_id, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS web3_paymaster_budgets (
+  id TEXT PRIMARY KEY,
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  network_id TEXT NOT NULL REFERENCES web3_networks(id),
+  label TEXT NOT NULL,
+  cap_cents INTEGER NOT NULL CHECK (cap_cents > 0),
+  spent_cents INTEGER NOT NULL DEFAULT 0 CHECK (spent_cents >= 0),
+  per_op_max_cents INTEGER NOT NULL CHECK (per_op_max_cents > 0),
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','PAUSED')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_web3_paymaster_budgets_merchant
+  ON web3_paymaster_budgets(merchant_id, status);
+
+CREATE TABLE IF NOT EXISTS web3_paymaster_ops (
+  id TEXT PRIMARY KEY,
+  budget_id TEXT NOT NULL REFERENCES web3_paymaster_budgets(id),
+  user_op_hash TEXT NOT NULL UNIQUE,
+  payer_id TEXT NOT NULL,
+  gas_cents INTEGER NOT NULL CHECK (gas_cents > 0),
+  anchor_height INTEGER,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_web3_paymaster_ops_budget
+  ON web3_paymaster_ops(budget_id, created_at DESC);
+`;
+
 export function openDb(dbPath: string): Db {
   if (dbPath !== ':memory:') {
     mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
@@ -930,7 +1112,7 @@ export function openDb(dbPath: string): Db {
 export function migrate(db: Db): void {
   const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined;
   const version = row?.user_version ?? 0;
-  if (version >= 9) return;
+  if (version >= 10) return;
   db.exec('BEGIN IMMEDIATE;');
   try {
     if (version < 1) db.exec(SCHEMA);
@@ -942,7 +1124,8 @@ export function migrate(db: Db): void {
     if (version < 7) db.exec(SCHEMA_V7);
     if (version < 8) db.exec(SCHEMA_V8);
     if (version < 9) db.exec(SCHEMA_V9);
-    db.exec('PRAGMA user_version = 9;');
+    if (version < 10) db.exec(SCHEMA_V10);
+    db.exec('PRAGMA user_version = 10;');
     db.exec('COMMIT;');
   } catch (error) {
     db.exec('ROLLBACK;');

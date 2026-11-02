@@ -157,7 +157,7 @@ test('cobranças: cliente, boleto, link Pix, link boleto e assinaturas fecham o 
     amountCents: 4_990,
     description: 'Café especial 1kg',
     customerId: customer.id,
-    expiresInSeconds: 86_400,
+    expiresInSeconds: 30 * 86_400,
     now,
   });
   assert.equal(pixLink.link.status, 'ACTIVE');

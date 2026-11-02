@@ -22,6 +22,7 @@ import type { FiscalWorker } from '../modules/fiscal-worker.ts';
 import type { SettlementWorker } from '../modules/settlement-worker.ts';
 import type { NotificationHub } from '../modules/notifications.ts';
 import type { TokenizationHub } from '../modules/tokenization.ts';
+import type { Web3Hub } from '../modules/web3.ts';
 import type { CustomerService } from '../modules/customers.ts';
 import type { BillingService } from '../modules/billing.ts';
 import type { SubscriptionService } from '../modules/subscriptions.ts';
@@ -37,6 +38,7 @@ import type { RsfnService } from '../modules/rsfn.ts';
 import { clearSessionCookie, sessionCookie } from '../modules/bank-auth.ts';
 import { buildReadiness } from '../modules/readiness.ts';
 import { registerTokenizationRoutes } from './tokenization-routes.ts';
+import { registerWeb3Routes } from './web3-routes.ts';
 import { DEMO_MERCHANT_ID, DEMO_TERMINAL_ID } from '../modules/seed.ts';
 import {
   assertMerchantScope,
@@ -58,6 +60,7 @@ export interface AppContext {
   settlements: SettlementWorker;
   hub: NotificationHub;
   tokenization: TokenizationHub;
+  web3: Web3Hub;
   customers: CustomerService;
   billing: BillingService;
   subscriptions: SubscriptionService;
@@ -704,6 +707,31 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/tokenization/agents/evaluate': { post: { summary: 'Avalia ação de agente contra guardrails' } },
       '/v1/tokenization/bridges/quote': { post: { summary: 'Cotação de ponte Pix, Lightning, Drex ou TCA' } },
       '/v1/tokenization/zk/prove': { post: { summary: 'Prova Merkle de inclusão de credencial' } },
+      '/v1/web3/overview': { get: { summary: 'KPIs de DVP, crédito agro, ZK, agentes e paymaster' } },
+      '/v1/web3/networks': { get: { summary: 'Redes, appchains e subnets registradas' }, post: { summary: 'Registra rede com contratos e governança' } },
+      '/v1/web3/networks/{id}': { get: { summary: 'Detalhe da rede por id ou chainId' } },
+      '/v1/web3/oracle/feeds': { get: { summary: 'Feeds de oráculo com última cotação' }, post: { summary: 'Registra feed com staleness máximo' } },
+      '/v1/web3/oracle/prices': { post: { summary: 'Publica rodada de preço assinada e ancorada' } },
+      '/v1/web3/oracle/prices/{symbol}': { get: { summary: 'Lê preço validando staleness' } },
+      '/v1/web3/dvp/offers': { get: { summary: 'Ofertas DVP abertas e histórico' }, post: { summary: 'Cria oferta DVP com digest tipado e nonce' } },
+      '/v1/web3/dvp/offers/{id}': { get: { summary: 'Detalhe da oferta DVP' } },
+      '/v1/web3/dvp/offers/{id}/accept': { post: { summary: 'Aceita oferta e liquida atomicamente com partidas dobradas' } },
+      '/v1/web3/dvp/offers/{id}/cancel': { post: { summary: 'Cancela oferta própria ainda aberta' } },
+      '/v1/web3/dvp/trades': { get: { summary: 'Trades DVP liquidados' } },
+      '/v1/web3/agro/contracts': { get: { summary: 'Contratos de crédito agro com colateral tokenizado' }, post: { summary: 'Abre crédito agro com LTV, oráculo e escrow' } },
+      '/v1/web3/agro/contracts/{id}': { get: { summary: 'Detalhe do contrato agro com LTV atual' } },
+      '/v1/web3/agro/contracts/{id}/repay': { post: { summary: 'Amortiza ou quita contrato agro liberando escrow' } },
+      '/v1/web3/agro/contracts/{id}/liquidate': { post: { summary: 'Liquidação permissionless acima do limiar de LTV' } },
+      '/v1/web3/zk/attestations': { get: { summary: 'Atestações de predicado emitidas' }, post: { summary: 'Emite atestação assinada com expiração' } },
+      '/v1/web3/zk/attestations/{id}/revoke': { post: { summary: 'Revoga atestação' } },
+      '/v1/web3/zk/verify': { post: { summary: 'Verifica predicado com nullifier e anti-replay' } },
+      '/v1/web3/zk/verifications': { get: { summary: 'Histórico de verificações ZK' } },
+      '/v1/web3/agents/sessions': { get: { summary: 'Sessões de agente com política e teto' }, post: { summary: 'Emite session key com seletores e teto de gasto' } },
+      '/v1/web3/agents/sessions/{id}/authorize': { post: { summary: 'Autoriza ação de agente contra política, sessão e teto' } },
+      '/v1/web3/agents/sessions/{id}/revoke': { post: { summary: 'Revoga session key imediatamente' } },
+      '/v1/web3/paymaster/budgets': { get: { summary: 'Orçamentos de patrocínio de gas' }, post: { summary: 'Cria orçamento de paymaster com teto por UserOp' } },
+      '/v1/web3/paymaster/ops': { get: { summary: 'UserOps patrocinadas' } },
+      '/v1/web3/paymaster/sponsor': { post: { summary: 'Patrocina UserOp com anti-replay por hash' } },
       '/v1/bank/status': { get: { summary: 'Estado público do cadastro e do bootstrap do banco' } },
       '/v1/readiness': { get: { summary: 'Diagnóstico do que falta para operar com dinheiro real' } },
       '/v1/bank/auth/register': { post: { summary: 'Cadastro com CPF/CNPJ validado e aprovação do administrador' } },
@@ -2196,6 +2224,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   // ── Tokenização, Web3 e agentes ───────────────────────────────────────────
   registerTokenizationRoutes(app, ctx.tokenization, { requireRead, requireWrite, assertDemo });
+  registerWeb3Routes(app, ctx.web3, { requireRead, requireWrite });
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   let dashboardHtml: string | undefined;

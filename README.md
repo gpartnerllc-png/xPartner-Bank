@@ -4,6 +4,8 @@ Core financeiro de referência que une **adquirência, ledger de dupla entrada, 
 
 Fechando o arco de banco aberto e patrimônio, o aplicativo também opera **Open Finance** — consentimentos do titular, contas vinculadas mascaradas, débito externo e iniciação de pagamento Pix — e uma **carteira de investimentos** com CDB, LCI, LCA, Tesouro e fundos, resgate por liquidez e proventos com IR retido na fonte.
 
+Sobre a tokenização roda o **stack Web3 institucional**: DVP atômico com digest tipado e nonce, crédito agro com colateral tokenizado e oráculo com staleness, atestações de predicado com nullifier, session keys ERC-4337 com política e teto, paymaster com anti-replay, e registro de appchains/subnets com governança. Todo movimento financeiro continua passando pelo ledger de dupla entrada e pela cadeia de âncoras.
+
 Implementação funcional em **Node.js 24 + TypeScript + Fastify**, sem infraestrutura externa obrigatória: banco SQLite com WAL, barramento de eventos em processo e outbox transacional. A **conta digital** tem cadastro com aprovação do administrador, sessão segura, transferência real entre contas do banco, **crédito próprio** (antecipação de recebível e empréstimo com agenda de parcelas) e um **PDV com NFC-e síncrona**. O mesmo contrato bancário é espelhado em um **Worker Cloudflare** com D1, KV, R2, Queues e Workers AI. O modelo foi desenhado para migrar para PostgreSQL/Kafka/microsserviços sem reescrever o domínio.
 
 ```
@@ -51,6 +53,11 @@ Autorização      Ledger ACID         Pix (BR Code)
 - **DePIN e PoPW**: registro de dispositivo, prova física inédita, capacidade declarada e recompensa contábil de 2 centavos por unidade.
 - **Governança ADLA e agentes**: voto ponderado com quórum, propostas de admissão/tesouraria/parâmetro e avaliação de agente com allowlist, limite por ação, limite diário e revisão humana.
 - **Pontes e provas**: cotação/liquidação simulada em PIX, Lightning, Drex e TCA; credenciais por compromisso SHA-256 com prova de inclusão Merkle e cadeia de âncoras append-only à prova de adulteração.
+- **DVP atômico**: oferta com digest tipado, nonce, validade e taker opcional; aceite move as duas pernas no mesmo grupo de dupla entrada, com taxa limitada e proteção contra replay.
+- **Crédito agro com oráculo**: colateral tokenizado em escrow, LTV na abertura, juros fixos, quitação com liberação e liquidação permissionless quando o preço cai abaixo do limiar.
+- **Divulgação seletiva e nullifier**: atestação de predicado assinada por emissor, expiração, revogação e nullifier por finalidade/dia — sem prometer zk-SNARK.
+- **ERC-4337, paymaster e agentes**: session keys com hash persistido, allowlist de seletores/símbolos, teto por sessão, limite diário, aprovação humana e patrocínio de gas com teto por UserOp e global.
+- **Appchains e subnets**: registro de redes com `chainId` único, contratos de ponte/token/DVP/paymaster, finalidade e governança, tudo ancorado.
 - **Conta digital com aprovação**: cadastro PF/PJ com CPF/CNPJ validado, fila de pendentes e liberação pelo administrador; senha scrypt, sessão HttpOnly com CSRF, bloqueio após 5 falhas, reset de senha temporária, exclusão só com saldo zero e auditoria de toda ação.
 - **RSFN / PAG0004**: XML no namespace `bcb.gov.br` com `NumCtrlIF` de 26 caracteres, parser fechado (sem DTD, entidades ou atributos), validação de CPF/CNPJ por módulo 11, XSD publicado, hash SHA-256 do XML, débito/crédito atômicos com a câmara de compensação, estorno automático na recusa e retorno simulado apenas em demo. Sem ISPB, ICP-Brasil e conector mTLS homologado, nenhum XML sai do processo.
 - **Transferência real entre contas do banco**: débito e crédito atômicos, duas partidas no razão com saldo após cada lançamento, E2E ID, chave de idempotência com hash da requisição, limites por operação e diário, comprovante com hash de integridade e extrato CSV. Sem PSP, o dinheiro circula apenas dentro do xPartner Bank — e isso está declarado em toda a interface.
@@ -124,7 +131,7 @@ O `docker-compose.yml` sobe em modo produção (demo desligado, volume persisten
 |---|---|
 | `npm run dev` | API + dashboard com watch |
 | `npm start` | API + dashboard |
-| `npm test` | 81 testes (domínio, segurança, config, cobranças, Open Finance, investimentos, tokenização, conta digital, crédito/PDV, capital demo/carteira USD, Pix/chaves, RSFN/PAG0004, mTLS, prontidão e E2E) |
+| `npm test` | 93 testes (domínio, segurança, config, cobranças, Open Finance, investimentos, tokenização, Web3/DVP/agro/ZK/4337, conta digital, crédito/PDV, capital demo/carteira USD, Pix/chaves, RSFN/PAG0004, mTLS, prontidão e E2E) |
 | `npm run typecheck` | TypeScript strict, sem emitir |
 | `npm run check` | Typecheck + suíte completa |
 | `npm run demo:balance -- --document CPF --brl 2000000000 --usd 3000000000` | Leva o titular ao saldo-alvo demo em BRL e USD, creditando só a diferença |
@@ -175,8 +182,18 @@ O `docker-compose.yml` sobe em modo produção (demo desligado, volume persisten
 | `POST` | `/v1/tokenization/agents/evaluate` | Avalia ação de agente com guardrails |
 | `POST` | `/v1/tokenization/bridges/quote` | Cotação em PIX, Lightning, Drex ou TCA |
 | `POST` | `/v1/tokenization/zk/prove` | Prova de inclusão de credencial |
+| `GET` | `/v1/web3/overview` | KPIs de DVP, agro, ZK, agentes e paymaster |
+| `POST` | `/v1/web3/networks` | Registra appchain, subnet, L2 ou L1 com contratos |
+| `POST` | `/v1/web3/oracle/prices` | Publica rodada de preço ancorada |
+| `POST` | `/v1/web3/dvp/offers` | Cria oferta DVP com digest, nonce e validade |
+| `POST` | `/v1/web3/dvp/offers/:id/accept` | Liquida as duas pernas atomicamente |
+| `POST` | `/v1/web3/agro/contracts` | Abre crédito agro com LTV e oráculo |
+| `POST` | `/v1/web3/agro/contracts/:id/liquidate` | Liquidação permissionless por LTV |
+| `POST` | `/v1/web3/zk/verify` | Verifica predicado com nullifier e anti-replay |
+| `POST` | `/v1/web3/agents/sessions` | Emite session key com seletores e teto |
+| `POST` | `/v1/web3/paymaster/sponsor` | Patrocina UserOp com anti-replay |
 
-Rotas `/v1/demo/*` existem apenas com `DEMO_MODE=true`. A superfície completa de tokenização está em [docs/TOKENIZACAO.md](docs/TOKENIZACAO.md).
+Rotas `/v1/demo/*` existem apenas com `DEMO_MODE=true`. A superfície completa de tokenização está em [docs/TOKENIZACAO.md](docs/TOKENIZACAO.md) e a do stack Web3 em [docs/WEB3.md](docs/WEB3.md).
 
 ### Conta digital
 
@@ -236,17 +253,17 @@ Sem partidas dobradas e sem conector real: a mensagem é contabilizada, mas o en
 ```
 src/
   kernel/      config, db, dinheiro, crypto, bus/outbox, âncoras, métricas, log
-  domain/      ledger, risco, roteamento, autorização, Pix, fiscal, liquidação, boleto, documentos, overview, vault, zk, rsfn
-  modules/     transações, Pix, workers, notificações, seed, cobranças, assinaturas, extrato, open finance, investimentos, tokenização, banco (conta, auth, transferências, chaves Pix, crédito, PDV/NFC-e, capital demo e carteira USD), rsfn
-  api/         Fastify, autenticação de dispositivo/token, rotas de tokenização, cobranças e banco, mTLS, rate limit
+  domain/      ledger, risco, roteamento, autorização, Pix, fiscal, liquidação, boleto, documentos, overview, vault, zk, web3, rsfn
+  modules/     transações, Pix, workers, notificações, seed, cobranças, assinaturas, extrato, open finance, investimentos, tokenização, web3 (DVP, agro, ZK, 4337, paymaster, redes), banco (conta, auth, transferências, chaves Pix, crédito, PDV/NFC-e, capital demo e carteira USD), rsfn
+  api/         Fastify, autenticação de dispositivo/token, rotas de tokenização, web3, cobranças e banco, mTLS, rate limit
 public/        dashboards e aplicativo single-file (index, tokenization, app, bank, core e checkout)
 cloudflare/    Worker edge: D1, KV, R2, Queues, Workers AI, migração e testes
-contracts/     Solidity de referência (ADLA, bio-royalty, DePIN, governança, Merkle/anchor)
+contracts/     Solidity de referência (ADLA, bio-royalty, DePIN, governança, Merkle/anchor, token regulado, DVP, agro, paymaster, ZK, appchain, agentes)
 proto/         contrato gRPC de referência da conta digital
-tests/         unitários + E2E + API de tokenização + conta digital + crédito/PDV + capital/carteira USD + Pix + mTLS
+tests/         unitários + E2E + API de tokenização + Web3 + conta digital + crédito/PDV + capital/carteira USD + Pix + mTLS
 db/            schema PostgreSQL de referência, ledger unificado (ledger_core), RSFN (bank_rsfn_messages), Pix (bank_pix_keys), crédito/PDV (bank_credit_contracts, bank_credit_installments, bank_pdv_sales), câmbio demo (bank_fx_*) e XSD PAG0004
 deploy/        manifestos Kubernetes
-docs/          arquitetura, segurança, banco, crédito, Pix, RSFN, Cloudflare, mTLS, stack e tokenização
+docs/          arquitetura, segurança, banco, crédito, Pix, RSFN, Cloudflare, mTLS, stack, tokenização e Web3
 ```
 
 ## O que é real e o que é simulado
@@ -277,6 +294,7 @@ docs/          arquitetura, segurança, banco, crédito, Pix, RSFN, Cloudflare, 
 | DePIN / PoPW | Prova demonstrativa + recompensa contábil | Atestação de hardware/TEE e fabricante |
 | Pontes PIX/Lightning/Drex/TCA | Cotação e liquidação interna | PSP/SPI, LND/LNbits, piloto Drex e custódia TCA |
 | Provas de credencial | Compromisso + Merkle (divulgação seletiva) | zk-SNARK auditado, Open Finance e identidade descentralizada |
+| Web3 institucional | DVP, crédito agro, atestação/nullifier, session keys ERC-4337, paymaster e appchains com ledger real e âncoras | Contratos auditados e implantados, oráculo multisig, verificador de prova e custódia regulada |
 | Contratos em `contracts/` | Referência, não compilada nem implantada | Foundry + auditoria + timelock + multisig |
 | Drex | Roadmap | Nó Hyperledger Besu, contratos e liquidação condicional |
 | Multicloud | Design documentado | AWS + GCP ativos, roteamento por latência/saúde |
@@ -299,5 +317,6 @@ Este repositório é uma **referência de engenharia**, não uma instituição f
 - [Investimentos](docs/INVESTIMENTOS.md) — produtos, aportes, resgate, proventos, IR e caminho de produção.
 - [Segurança](docs/SEGURANCA.md) — P2PE, DUKPT, mTLS, ameaças, segredos, escopo PCI e limites de bioativos/agentes.
 - [Tokenização](docs/TOKENIZACAO.md) — ativos, bioativos, DAO, DePIN, agentes, pontes, provas, mapa da lista solicitada e roadmap.
+- [Web3 institucional](docs/WEB3.md) — DVP atômico, crédito agro com oráculo, ZKP/nullifier, ERC-4337, paymaster, appchains, invariantes e limites.
 - [Contratos de referência](contracts/README.md) — Solidity e paridade de canonicalização.
 - [Schema PostgreSQL](db/schema.postgres.sql) — modelo de produção equivalente, com complementos de [ledger](db/schema.ledger.postgres.sql), [Pix](db/schema.pix.postgres.sql), [crédito/PDV](db/schema.credit.postgres.sql), [RSFN](db/schema.rsfn.postgres.sql) e [carteira USD demo](db/schema.fx.postgres.sql).
