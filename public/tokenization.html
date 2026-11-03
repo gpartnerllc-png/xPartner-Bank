@@ -216,6 +216,7 @@
     <nav class="nav">
       <a href="/">Core bancário</a>
       <a href="/app">Aplicativo</a>
+      <a href="/web3">Web3</a>
       <a href="#ativos" class="active">Ativos</a>
       <a href="#bio">Bioativos</a>
       <a href="#depin">DePIN</a>
@@ -250,6 +251,10 @@
   <div class="banner">
     <span><b>Divulgação seletiva:</b> provas Merkle de inclusão — não são zk-SNARK. Bioativos só operam com consentimento explícito e admissão por DAO.</span>
     <span class="tag violet" id="trialTag">ledger —</span>
+  </div>
+
+  <div class="banner" id="edgeNotice" style="display:none;border-color:rgba(255,122,0,.35);background:rgba(255,122,0,.08)">
+    <span><b>Painel do core Node.</b> Este domínio edge não expõe <span class="mono">/v1/tokenization</span>; as integrações Web3 nativas do edge estão no <a href="/web3" style="color:#ffa040;font-weight:700">painel Web3</a>.</span>
   </div>
 
   <section class="grid kpis">
@@ -486,7 +491,7 @@
   </section>
 
   <div class="foot">
-    xPartner Bank · camada de tokenização e agentes · <a href="/">voltar ao core</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/metrics">métricas</a><br />
+    xPartner Bank · camada de tokenização e agentes · <a href="/">voltar ao core</a> · <a href="/web3">painel Web3</a> · <a href="/docs">API</a> · <a href="/metrics">métricas</a><br />
     Ambiente de demonstração. Nenhuma operação envolve dinheiro real ou rede pública.
   </div>
 </div>
@@ -1023,6 +1028,8 @@
     } catch (error) {
       $('liveDot').classList.add('off');
       $('liveLabel').textContent = 'offline';
+      const notice = $('edgeNotice');
+      if (notice) notice.style.display = 'flex';
       toast('Não foi possível iniciar a demo', 'err', error.message);
     }
   }
