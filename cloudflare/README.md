@@ -2,7 +2,7 @@
 
 Espelho de conta digital do xPartner Bank rodando 100% no edge: **Workers + D1 + KV + R2 + Queues + Workers AI**. É a mesma superfície de conta, cadastro, aprovação e transferência interna do núcleo Node, com o livro-razão protegido por trigger atômico no D1.
 
-> **Estado real:** o Worker está implementado, tipado, testado (12 testes) e **publicado em produção** em `https://xpartner-bank-edge.contatodroppfy.workers.dev`. Recursos provisionados na conta: D1 `xpartner-bank` (`2bbeea7f-0f07-4dec-8bcb-1152a68660e6`, migração `0001_bank` aplicada), namespace KV `XPARTNER_KV`, bucket R2 `xpartner-bank-receipts`, filas `xpartner-bank-events`/`xpartner-bank-events-dlq` e binding Workers AI. As páginas de `public/` (dashboard, `/bank`, `/core`, `/app`, `/pay`, tokenização) são servidas como **Workers Static Assets** no mesmo domínio — a mesma `bank.html` conversa com a API do edge por origem única.
+> **Estado real:** o Worker está implementado, tipado, testado (29 testes) e **publicado em produção** em `https://xpartner-bank-edge.contatodroppfy.workers.dev` (versão `1.2.0-edge`). Recursos provisionados na conta: D1 `xpartner-bank` (`2bbeea7f-0f07-4dec-8bcb-1152a68660e6`, migrações `0001` a `0005` aplicadas), namespace KV `CACHE`, bucket R2 `xpartner-bank-receipts`, filas `xpartner-bank-events`/`xpartner-bank-events-dlq` e binding Workers AI. As páginas de `public/` (dashboard, `/bank`, `/core`, `/app`, `/pay`, `/tokenization` e `/web3`) são servidas como **Workers Static Assets** no mesmo domínio — a mesma `bank.html` conversa com a API do edge por origem única. A camada `/v1/web3/*` cobre DVP, oráculo, agro, ZK, agentes, paymaster, Aladdin e intents cross-chain.
 
 ## Por que existe
 
@@ -20,6 +20,8 @@ Cliente (public/bank.html)
 │   ├── bank.ts       transferência, extrato, comprovante    │
 │   ├── repo.ts       contas, favorecidos, auditoria         │
 │   ├── security.ts   PBKDF2, sessões, CSRF, rate limit KV   │
+│   ├── web3-domain.ts digests, Monte Carlo, score, oráculo   │
+│   ├── web3-service.ts DVP, agro, ZK, agentes, Aladdin, CCIP │
 │   └── validation.ts CPF/CNPJ, valores, E2E                 │
 │                                                           │
 │  D1 ── trigger AFTER INSERT em bank_transfers              │
@@ -102,23 +104,23 @@ npm run deploy
 | `npm run dev` | Worker local com D1/KV/R2/fila simulados |
 | `npm run deploy` | Publica em produção |
 | `npm run check` | TypeScript strict no `src/` |
-| `npm test` | 12 testes de schema, trigger, idempotência e segurança |
+| `npm test` | 29 testes de schema, trigger, idempotência, segurança e domínio Web3 |
 | `npm run db:migrate:local` | Aplica `migrations/` no D1 local |
 | `npm run db:migrate` | Aplica `migrations/` no D1 remoto |
 | `npm run tail` | Logs em tempo real |
 
 ## Migração
 
-`migrations/0001_bank.sql` cria `bank_users`, `bank_accounts`, `bank_sessions`, `bank_transfers`, `bank_ledger`, `bank_audit`, `bank_sequences`, `edge_events`, as views `contas`/`transacoes` e o trigger `bank_transfers_post`. É **aditiva**: nada é apagado. Para evoluir, crie `0002_*.sql` — nunca edite uma migração já aplicada.
+`migrations/0001_bank.sql` cria `bank_users`, `bank_accounts`, `bank_sessions`, `bank_transfers`, `bank_ledger`, `bank_audit`, `bank_sequences`, `edge_events`, as views `contas`/`transacoes` e o trigger `bank_transfers_post`. `0002` adiciona capital demo e carteiras FX, `0003` completa a paridade Pix/crédito/RSFN, `0004` corrige o trigger de transferência e `0005_web3_aladdin.sql` adiciona redes, oráculo, holdings, DVP, agro, ZK, agentes, paymaster, risco Aladdin, empréstimos, lanes CCIP, liquidez, intents, mensagens e a cadeia de âncoras. Tudo é **aditivo**: nada é apagado. Para evoluir, crie `0006_*.sql` — nunca edite uma migração já aplicada.
 
 ## Testes
 
 ```bash
-npm test        # 12 testes
+npm test        # 29 testes
 npm run check   # tsc strict
 ```
 
-`test/schema.test.ts` prova que o trigger debita e credita, grava duas partidas, aborta tudo em saldo insuficiente, bloqueia auto-transferência e que a chave de idempotência é única. `test/security.test.ts` cobre PBKDF2, política de senha, senha temporária, CPF/CNPJ, dígito de conta, parsing de valores e chave de idempotência.
+`test/schema.test.ts` prova que o trigger debita e credita, grava duas partidas, aborta tudo em saldo insuficiente, bloqueia auto-transferência e que a chave de idempotência é única. `test/security.test.ts` cobre PBKDF2, política de senha, senha temporária, CPF/CNPJ, dígito de conta, parsing de valores e chave de idempotência. `test/web3-domain.test.ts` prova determinismo do Monte Carlo, faixas de score/teto, LTV, conversão do oráculo e estabilidade dos digests Web3.
 
 ## Diferenças honestas em relação ao núcleo Node
 
@@ -130,13 +132,16 @@ npm run check   # tsc strict
 | Eventos | outbox + bus em processo | Queues com DLQ e deduplicação em `edge_events` |
 | Comprovante | hash no próprio registro | JSON no R2 + hash SHA-256 |
 | IA | não usa | Workers AI com fallback |
+| Prova ZK | Groth16/BN254 real via snarkjs | atestação de emissor + nullifier; prova Groth16 registrada como `CORE_NODE_REQUIRED` |
+| Cross-chain | modelo CCIP + intents no ledger | mesmo modelo em D1, sem roteador CCIP ao vivo |
 | Trilhos externos | adquirência/Pix/fiscal | ausente por escopo |
 
 ## Limitações
 
 - O Worker **não** substitui o núcleo para Pix, boleto, fiscal ou Open Finance; essas rotas vivem no Node.
-- D1 não tem `BEGIN ... COMMIT` interativo: toda atomicidade depende do trigger e de `INSERT ... RETURNING`. Não mova a lógica de saldo para fora dele.
-- Ainda não há deploy; os IDs em `wrangler.jsonc` são placeholders.
+- D1 não tem `BEGIN ... COMMIT` interativo: toda atomicidade depende do trigger e de `batch()`.
+- A prova Groth16/BN254 só é gerada e verificada no core Node; o edge não roda snarkjs e registra a prova como `CORE_NODE_REQUIRED`, usando atestação + nullifier para predicados.
+- CCIP e intents são **modelados no ledger** (escrow, liquidez P2P, score de solver, mensagem com `messageId`); não há roteador CCIP nem chainlink real conectado.
 - Sem integração com PSP real, nenhuma transferência sai do xPartner Bank. O que existe é transferência **real e contábil** entre contas do mesmo banco.
 
 Veja também [docs/CLOUDFLARE.md](../docs/CLOUDFLARE.md) e [docs/BANCO.md](../docs/BANCO.md).

@@ -64,8 +64,26 @@ import { RSFN_PAG0004_XSD } from './rsfn-xsd.ts';
 import { openapi } from './openapi.ts';
 import { clearSessionCookie, nowIso, rateLimit, sessionCookie } from './security.ts';
 import type { RegisterInput } from './auth.ts';
+import * as web3 from './web3-service.ts';
 
-const VERSION = '1.0.0-edge';
+const VERSION = '1.2.0-edge';
+
+let web3Seed: Promise<void> | undefined;
+async function web3Ready(env: Env): Promise<void> {
+  web3Seed ??= web3.ensureWeb3Seed(env).catch((error) => {
+    web3Seed = undefined;
+    throw error;
+  });
+  await web3Seed;
+}
+
+async function web3Context(env: Env, request: Request, write = false): Promise<AuthContext> {
+  const context = requireReady(requireAuth(await authenticate(env, request)));
+  await web3Ready(env);
+  if (write) await rateLimit(env, `web3:write:${context.user.id}`, 120, 60);
+  await web3.ensureHolder(env, context.user.id);
+  return context;
+}
 
 function secureCookie(env: Env, request: Request): boolean {
   return new URL(request.url).protocol === 'https:' || env.ENVIRONMENT === 'production';
@@ -600,6 +618,404 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
       return json(env, request, { ok: true });
     }
     return json(env, request, await resetUserPassword(env, admin, userId));
+  }
+
+  // ── Web3 institucional · DVP, oráculo, agro, ZK, agentes, paymaster ──
+  if (path === '/v1/web3/capabilities' && method === 'GET') {
+    await web3Ready(env);
+    return json(env, request, await web3.capabilities(env));
+  }
+
+  if (path === '/v1/web3/overview' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.web3Overview(env, context.user.id));
+  }
+
+  if (path === '/v1/web3/networks' && method === 'GET') {
+    await web3Context(env, request);
+    return json(env, request, await web3.listNetworks(env, withQuery(url, 'status')));
+  }
+
+  if (path === '/v1/web3/networks' && method === 'POST') {
+    const context = requireReady(requireAdmin(await authenticate(env, request)));
+    await web3Ready(env);
+    return json(env, request, await web3.createNetwork(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const web3NetworkId = matchId(path, /^\/v1\/web3\/networks\/([A-Za-z0-9_-]+)$/);
+  if (web3NetworkId && method === 'GET') {
+    await web3Context(env, request);
+    return json(env, request, await web3.getNetwork(env, web3NetworkId));
+  }
+
+  if (path === '/v1/web3/oracle/feeds' && method === 'GET') {
+    await web3Context(env, request);
+    return json(env, request, await web3.listFeeds(env));
+  }
+
+  if (path === '/v1/web3/oracle/feeds' && method === 'POST') {
+    requireReady(requireAdmin(await authenticate(env, request)));
+    await web3Ready(env);
+    return json(env, request, await web3.registerFeed(env, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  if (path === '/v1/web3/oracle/prices' && method === 'POST') {
+    const context = requireReady(requireAdmin(await authenticate(env, request)));
+    await web3Ready(env);
+    return json(env, request, await web3.publishPrice(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const web3PriceSymbol = matchId(path, /^\/v1\/web3\/oracle\/prices\/([A-Za-z0-9]+)$/);
+  if (web3PriceSymbol && method === 'GET') {
+    await web3Context(env, request);
+    return json(env, request, { price: await web3.readPrice(env, web3PriceSymbol) });
+  }
+
+  if (path === '/v1/web3/dvp/offers' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listOffers(env, context.user.id, {
+        status: withQuery(url, 'status'),
+        mine: withQuery(url, 'mine') === 'true',
+        limit: withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      }),
+    );
+  }
+
+  if (path === '/v1/web3/dvp/offers' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.createOffer(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const web3OfferAccept = matchId(path, /^\/v1\/web3\/dvp\/offers\/([A-Za-z0-9_-]+)\/accept$/);
+  if (web3OfferAccept && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.acceptOffer(env, web3OfferAccept, context.user.id), 201);
+  }
+
+  const web3OfferCancel = matchId(path, /^\/v1\/web3\/dvp\/offers\/([A-Za-z0-9_-]+)\/cancel$/);
+  if (web3OfferCancel && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.cancelOffer(env, web3OfferCancel, context.user.id));
+  }
+
+  const web3OfferId = matchId(path, /^\/v1\/web3\/dvp\/offers\/([A-Za-z0-9_-]+)$/);
+  if (web3OfferId && method === 'GET') {
+    await web3Context(env, request);
+    return json(env, request, await web3.getOffer(env, web3OfferId));
+  }
+
+  if (path === '/v1/web3/dvp/trades' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listTrades(
+        env,
+        context.user.id,
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/agro/contracts' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listAgro(
+        env,
+        context.user.id,
+        withQuery(url, 'status'),
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/agro/contracts' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.openAgro(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const agroRepayId = matchId(path, /^\/v1\/web3\/agro\/contracts\/([A-Za-z0-9_-]+)\/repay$/);
+  if (agroRepayId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    const body = await readJson<Record<string, unknown>>(request);
+    return json(env, request, await web3.repayAgro(env, agroRepayId, context.user.id, body.amountCents as number | undefined));
+  }
+
+  const agroLiquidateId = matchId(path, /^\/v1\/web3\/agro\/contracts\/([A-Za-z0-9_-]+)\/liquidate$/);
+  if (agroLiquidateId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.liquidateAgro(env, agroLiquidateId, context.user.id));
+  }
+
+  const agroId = matchId(path, /^\/v1\/web3\/agro\/contracts\/([A-Za-z0-9_-]+)$/);
+  if (agroId && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.getAgro(env, agroId, context.user.id));
+  }
+
+  if (path === '/v1/web3/zk/attestations' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.listAttestations(env, context.user.id, withQuery(url, 'commitment')));
+  }
+
+  if (path === '/v1/web3/zk/attestations' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.issueAttestation(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const zkRevokeId = matchId(path, /^\/v1\/web3\/zk\/attestations\/([A-Za-z0-9_-]+)\/revoke$/);
+  if (zkRevokeId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.revokeAttestation(env, zkRevokeId, context.user.id));
+  }
+
+  if (path === '/v1/web3/zk/verify' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.verifyAttestation(env, context.user.id, await readJson<Record<string, unknown>>(request)));
+  }
+
+  if (path === '/v1/web3/zk/verifications' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listVerifications(
+        env,
+        context.user.id,
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/zk/proofs' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.registerProof(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  if (path === '/v1/web3/agents/sessions' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listSessions(
+        env,
+        context.user.id,
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/agents/sessions' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.grantSession(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const agentAuthorizeId = matchId(path, /^\/v1\/web3\/agents\/sessions\/([A-Za-z0-9_-]+)\/authorize$/);
+  if (agentAuthorizeId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(
+      env,
+      request,
+      await web3.authorizeSession(env, agentAuthorizeId, context.user.id, await readJson<Record<string, unknown>>(request)),
+    );
+  }
+
+  const agentRevokeId = matchId(path, /^\/v1\/web3\/agents\/sessions\/([A-Za-z0-9_-]+)\/revoke$/);
+  if (agentRevokeId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.revokeSession(env, agentRevokeId, context.user.id));
+  }
+
+  if (path === '/v1/web3/paymaster/budgets' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.listBudgets(env, context.user.id));
+  }
+
+  if (path === '/v1/web3/paymaster/budgets' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.createBudget(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  if (path === '/v1/web3/paymaster/ops' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listOps(
+        env,
+        context.user.id,
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/paymaster/sponsor' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.sponsorOp(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  // ── Aladdin: risco quantitativo, ZK e crédito algorítmico ────────
+  if (path === '/v1/web3/aladdin/overview' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.aladdinOverview(env, context.user.id));
+  }
+
+  if (path === '/v1/web3/aladdin/risk/metrics' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listRisk(
+        env,
+        context.user.id,
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/aladdin/risk/simulate' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.simulateRisk(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  if (path === '/v1/web3/aladdin/risk/metrics' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.recordRisk(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  if (path === '/v1/web3/aladdin/loans' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listLoans(
+        env,
+        context.user.id,
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/aladdin/loans' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.openLoan(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const aladdinRepayId = matchId(path, /^\/v1\/web3\/aladdin\/loans\/([A-Za-z0-9_-]+)\/repay$/);
+  if (aladdinRepayId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    const body = await readJson<Record<string, unknown>>(request);
+    return json(env, request, await web3.repayLoan(env, aladdinRepayId, context.user.id, body.amountCents as number | undefined));
+  }
+
+  const aladdinLoanId = matchId(path, /^\/v1\/web3\/aladdin\/loans\/([A-Za-z0-9_-]+)$/);
+  if (aladdinLoanId && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.getLoan(env, aladdinLoanId, context.user.id));
+  }
+
+  // ── CCIP, liquidez P2P e intents cross-chain ─────────────────────
+  if (path === '/v1/web3/ccip/lanes' && method === 'GET') {
+    await web3Context(env, request);
+    return json(env, request, await web3.listLanes(env, withQuery(url, 'status')));
+  }
+
+  if (path === '/v1/web3/ccip/lanes' && method === 'POST') {
+    const context = requireReady(requireAdmin(await authenticate(env, request)));
+    await web3Ready(env);
+    return json(env, request, await web3.registerLane(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  if (path === '/v1/web3/ccip/liquidity' && method === 'GET') {
+    await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listLiquidity(env, { laneId: withQuery(url, 'laneId'), status: withQuery(url, 'status') }),
+    );
+  }
+
+  if (path === '/v1/web3/ccip/liquidity' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.registerLiquidity(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  if (path === '/v1/web3/intents/overview' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.crosschainOverview(env, context.user.id));
+  }
+
+  if (path === '/v1/web3/intents' && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listIntents(
+        env,
+        context.user.id,
+        withQuery(url, 'status'),
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
+  }
+
+  if (path === '/v1/web3/intents' && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.createIntent(env, context.user.id, await readJson<Record<string, unknown>>(request)), 201);
+  }
+
+  const intentQuotesId = matchId(path, /^\/v1\/web3\/intents\/([A-Za-z0-9_-]+)\/quotes$/);
+  if (intentQuotesId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(
+      env,
+      request,
+      await web3.quoteIntent(env, intentQuotesId, context.user.id, await readJson<Record<string, unknown>>(request)),
+      201,
+    );
+  }
+
+  const intentSelectId = matchId(path, /^\/v1\/web3\/intents\/([A-Za-z0-9_-]+)\/select$/);
+  if (intentSelectId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    const body = await readJson<Record<string, unknown>>(request);
+    return json(env, request, await web3.selectQuote(env, intentSelectId, context.user.id, body.quoteId ? String(body.quoteId) : undefined));
+  }
+
+  const intentExecuteId = matchId(path, /^\/v1\/web3\/intents\/([A-Za-z0-9_-]+)\/execute$/);
+  if (intentExecuteId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.executeIntent(env, intentExecuteId, context.user.id), 201);
+  }
+
+  const intentCancelId = matchId(path, /^\/v1\/web3\/intents\/([A-Za-z0-9_-]+)\/cancel$/);
+  if (intentCancelId && method === 'POST') {
+    const context = await web3Context(env, request, true);
+    return json(env, request, await web3.cancelIntent(env, intentCancelId, context.user.id));
+  }
+
+  const intentId = matchId(path, /^\/v1\/web3\/intents\/([A-Za-z0-9_-]+)$/);
+  if (intentId && method === 'GET') {
+    const context = await web3Context(env, request);
+    return json(env, request, await web3.getIntent(env, intentId, context.user.id));
+  }
+
+  if (path === '/v1/web3/ccip/messages' && method === 'GET') {
+    await web3Context(env, request);
+    return json(
+      env,
+      request,
+      await web3.listMessages(
+        env,
+        withQuery(url, 'laneId'),
+        withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : undefined,
+      ),
+    );
   }
 
   // Páginas estáticas do app (public/ servido via Assets). Rotas /v1/* e

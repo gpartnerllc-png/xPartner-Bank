@@ -51,9 +51,9 @@ export const openapi = {
   openapi: '3.1.0',
   info: {
     title: 'xPartner Bank — Edge API',
-    version: '1.0.0-edge',
+    version: '1.2.0-edge',
     description:
-      'Contrato do Worker xPartner Bank no Cloudflare. Dinheiro em centavos, ledger de dupla entrada em D1, comprovantes em R2, eventos em Queues e insights com Workers AI. Sessões por cookie HttpOnly (xp_bank_session) exigem o header x-bank-csrf nas escritas; tokens Bearer também são aceitos.',
+      'Contrato do Worker xPartner Bank no Cloudflare. Dinheiro em centavos, ledger de dupla entrada em D1, comprovantes em R2, eventos em Queues e insights com Workers AI. Sessões por cookie HttpOnly (xp_bank_session) exigem o header x-bank-csrf nas escritas; tokens Bearer também são aceitos. A camada Web3 cobre DVP atômico, oráculo, agro, atestações ZK, agentes com política, paymaster, motor Aladdin de risco/crédito e intents cross-chain (CCIP). Prova Groth16/BN254 roda no core Node; no edge a verificação é por atestação e nullifier.',
   },
   servers: [{ url: '/' }],
   tags: [
@@ -66,6 +66,9 @@ export const openapi = {
     { name: 'Transferências' },
     { name: 'Demo' },
     { name: 'Administração' },
+    { name: 'Web3' },
+    { name: 'Aladdin' },
+    { name: 'Cross-chain' },
   ],
   paths: {
     '/health': {
@@ -791,6 +794,470 @@ export const openapi = {
         security: auth,
         parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
         responses: { '200': ok('Mensagens RSFN'), '403': erro('Requer admin') },
+      },
+    },
+    '/v1/web3/capabilities': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Capacidades Web3 e limites honestos do edge',
+        security: [],
+        responses: { '200': ok('Groth16/BN254 no core Node; atestação + nullifier no edge') },
+      },
+    },
+    '/v1/web3/overview': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Visão consolidada de redes, ativos, atestações, crédito, intents e integridade da âncora',
+        security: auth,
+        responses: { '200': ok('Visão Web3 do titular'), '401': erro('Sessão inválida') },
+      },
+    },
+    '/v1/web3/networks': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista redes tokenizadas',
+        security: auth,
+        parameters: [{ name: 'status', in: 'query', schema: { type: 'string', enum: ['ACTIVE', 'PAUSED'] } }],
+        responses: { '200': ok('Redes'), '401': erro('Sessão inválida') },
+      },
+      post: {
+        tags: ['Web3'],
+        summary: 'Registra rede (admin)',
+        security: auth,
+        responses: { '201': ok('Rede criada'), '403': erro('Requer admin'), '409': erro('chainId já registrado') },
+      },
+    },
+    '/v1/web3/networks/{id}': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Detalhe da rede',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Rede'), '404': erro('Rede não encontrada') },
+      },
+    },
+    '/v1/web3/oracle/feeds': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista feeds do oráculo com último preço',
+        security: auth,
+        responses: { '200': ok('Feeds') },
+      },
+      post: {
+        tags: ['Web3'],
+        summary: 'Registra feed (admin)',
+        security: auth,
+        responses: { '201': ok('Feed criado'), '403': erro('Requer admin') },
+      },
+    },
+    '/v1/web3/oracle/prices': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Publica preço assinado no feed (admin)',
+        security: auth,
+        responses: { '201': ok('Preço publicado'), '422': erro('Preço ou decimais inválidos') },
+      },
+    },
+    '/v1/web3/oracle/prices/{symbol}': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lê preço vigente; falha se pausado, ausente ou velho',
+        security: auth,
+        parameters: [{ name: 'symbol', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Preço'), '422': erro('ORACLE_PAUSED, ORACLE_MISSING ou ORACLE_STALE') },
+      },
+    },
+    '/v1/web3/dvp/offers': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista ofertas de DVP atômico',
+        security: auth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['OPEN', 'FILLED', 'CANCELLED', 'EXPIRED'] } },
+          { name: 'mine', in: 'query', schema: { type: 'boolean' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } },
+        ],
+        responses: { '200': ok('Ofertas') },
+      },
+      post: {
+        tags: ['Web3'],
+        summary: 'Cria oferta com digest determinístico e nonce único',
+        security: auth,
+        responses: { '201': ok('Oferta criada'), '422': erro('Campos ou saldo inválidos'), '409': erro('Nonce repetido') },
+      },
+    },
+    '/v1/web3/dvp/offers/{id}': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Detalhe da oferta',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Oferta'), '404': erro('Oferta não encontrada') },
+      },
+    },
+    '/v1/web3/dvp/offers/{id}/accept': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Executa DVP: troca unidades e caixa em lote atômico no D1',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '201': ok('Trade liquidado'), '409': erro('Oferta indisponível'), '422': erro('Saldo ou preço inválido') },
+      },
+    },
+    '/v1/web3/dvp/offers/{id}/cancel': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Cancela oferta do titular',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Oferta cancelada'), '403': erro('Oferta de outro titular') },
+      },
+    },
+    '/v1/web3/dvp/trades': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Trades DVP do titular',
+        security: auth,
+        parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
+        responses: { '200': ok('Trades') },
+      },
+    },
+    '/v1/web3/agro/contracts': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista contratos agro com colateral em escrow',
+        security: auth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['OPEN', 'REPAID', 'LIQUIDATED'] } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } },
+        ],
+        responses: { '200': ok('Contratos') },
+      },
+      post: {
+        tags: ['Web3'],
+        summary: 'Abre crédito agro com colateral em escrow e desembolso da tesouraria',
+        security: auth,
+        responses: { '201': ok('Contrato aberto'), '422': erro('LTV excedido ou saldo insuficiente') },
+      },
+    },
+    '/v1/web3/agro/contracts/{id}': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Detalhe do contrato agro',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Contrato'), '404': erro('Contrato não encontrado') },
+      },
+    },
+    '/v1/web3/agro/contracts/{id}/repay': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Amortiza ou quita o contrato agro e libera o colateral em zero',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Pagamento aplicado'), '422': erro('Valor inválido') },
+      },
+    },
+    '/v1/web3/agro/contracts/{id}/liquidate': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Liquida contrato acima do LTV: liquidador paga a dívida e recebe o colateral',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Contrato liquidado'), '422': erro('LTV dentro do limite') },
+      },
+    },
+    '/v1/web3/zk/attestations': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista atestações de predicado do titular',
+        security: auth,
+        parameters: [{ name: 'commitment', in: 'query', schema: { type: 'string' } }],
+        responses: { '200': ok('Atestações') },
+      },
+      post: {
+        tags: ['Web3'],
+        summary: 'Emite atestação assinada por hash de compromisso',
+        security: auth,
+        responses: { '201': ok('Atestação emitida'), '422': erro('Predicado inválido') },
+      },
+    },
+    '/v1/web3/zk/attestations/{id}/revoke': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Revoga atestação do titular',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Atestação revogada'), '404': erro('Atestação não encontrada') },
+      },
+    },
+    '/v1/web3/zk/verify': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Verifica predicado com nullifier diário; reutilização retorna 409',
+        security: auth,
+        responses: { '201': ok('Verificação aceita'), '409': erro('Nullifier já usado') },
+      },
+    },
+    '/v1/web3/zk/verifications': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Histórico de verificações do titular',
+        security: auth,
+        parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
+        responses: { '200': ok('Verificações') },
+      },
+    },
+    '/v1/web3/zk/proofs': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Registra prova Groth16 do core Node (edge não verifica BN254)',
+        security: auth,
+        responses: { '201': ok('Prova registrada como CORE_NODE_REQUIRED'), '422': erro('Prova malformada') },
+      },
+    },
+    '/v1/web3/agents/sessions': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista sessões de agente do titular',
+        security: auth,
+        parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
+        responses: { '200': ok('Sessões') },
+      },
+      post: {
+        tags: ['Web3'],
+        summary: 'Cria sessão de agente; a chave é exibida uma única vez',
+        security: auth,
+        responses: { '201': ok('Sessão criada com chave única'), '422': erro('Política inválida') },
+      },
+    },
+    '/v1/web3/agents/sessions/{id}/authorize': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Autoriza ação do agente sob allowlist, teto por ação e teto diário',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Ação aprovada ou em revisão'), '409': erro('Bloqueada por política') },
+      },
+    },
+    '/v1/web3/agents/sessions/{id}/revoke': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Revoga sessão de agente',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Sessão revogada'), '404': erro('Sessão não encontrada') },
+      },
+    },
+    '/v1/web3/paymaster/budgets': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista orçamentos de patrocínio de gas',
+        security: auth,
+        responses: { '200': ok('Orçamentos') },
+      },
+      post: {
+        tags: ['Web3'],
+        summary: 'Cria orçamento de paymaster',
+        security: auth,
+        responses: { '201': ok('Orçamento criado'), '422': erro('Limites inválidos') },
+      },
+    },
+    '/v1/web3/paymaster/ops': {
+      get: {
+        tags: ['Web3'],
+        summary: 'Lista operações patrocinadas',
+        security: auth,
+        parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
+        responses: { '200': ok('Operações') },
+      },
+    },
+    '/v1/web3/paymaster/sponsor': {
+      post: {
+        tags: ['Web3'],
+        summary: 'Patrocina operação dentro do teto por op e da capacidade',
+        security: auth,
+        responses: { '201': ok('Operação patrocinada'), '409': erro('Sem capacidade ou replay'), '422': erro('Custo inválido') },
+      },
+    },
+    '/v1/web3/aladdin/overview': {
+      get: {
+        tags: ['Aladdin'],
+        summary: 'Painel do motor Aladdin: último risco, empréstimos e uso de capital',
+        security: auth,
+        responses: { '200': ok('Painel Aladdin') },
+      },
+    },
+    '/v1/web3/aladdin/risk/metrics': {
+      get: {
+        tags: ['Aladdin'],
+        summary: 'Métricas de risco quantitativo do titular',
+        security: auth,
+        parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
+        responses: { '200': ok('Métricas') },
+      },
+      post: {
+        tags: ['Aladdin'],
+        summary: 'Registra métrica VaR/volatilidade/score auditável',
+        security: auth,
+        responses: { '201': ok('Métrica registrada'), '422': erro('Limites violados') },
+      },
+    },
+    '/v1/web3/aladdin/risk/simulate': {
+      post: {
+        tags: ['Aladdin'],
+        summary: 'Monte Carlo determinístico (100–50.000 amostras) para VaR diário',
+        security: auth,
+        responses: { '201': ok('Simulação reproduzível'), '422': erro('Parâmetros fora da faixa') },
+      },
+    },
+    '/v1/web3/aladdin/loans': {
+      get: {
+        tags: ['Aladdin'],
+        summary: 'Lista empréstimos algorítmicos',
+        security: auth,
+        parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
+        responses: { '200': ok('Empréstimos') },
+      },
+      post: {
+        tags: ['Aladdin'],
+        summary: 'Abre crédito com teto por score, VaR e atestação de patrimônio',
+        security: auth,
+        responses: { '201': ok('Crédito desembolsado pela tesouraria'), '422': erro('Score, VaR, teto ou atestação insuficientes') },
+      },
+    },
+    '/v1/web3/aladdin/loans/{id}': {
+      get: {
+        tags: ['Aladdin'],
+        summary: 'Detalhe do empréstimo',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Empréstimo'), '404': erro('Empréstimo não encontrado') },
+      },
+    },
+    '/v1/web3/aladdin/loans/{id}/repay': {
+      post: {
+        tags: ['Aladdin'],
+        summary: 'Amortiza ou quita o empréstimo algorítmico',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Pagamento aplicado'), '422': erro('Valor inválido') },
+      },
+    },
+    '/v1/web3/ccip/lanes': {
+      get: {
+        tags: ['Cross-chain'],
+        summary: 'Lista lanes CCIP',
+        security: auth,
+        parameters: [{ name: 'status', in: 'query', schema: { type: 'string', enum: ['ACTIVE', 'PAUSED'] } }],
+        responses: { '200': ok('Lanes') },
+      },
+      post: {
+        tags: ['Cross-chain'],
+        summary: 'Registra lane com selectors uint64 e router/receiver (admin)',
+        security: auth,
+        responses: { '201': ok('Lane criada'), '403': erro('Requer admin'), '409': erro('Lane repetida') },
+      },
+    },
+    '/v1/web3/ccip/liquidity': {
+      get: {
+        tags: ['Cross-chain'],
+        summary: 'Lista liquidez P2P por lane e ativo',
+        security: auth,
+        parameters: [
+          { name: 'laneId', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['ACTIVE', 'PAUSED'] } },
+        ],
+        responses: { '200': ok('Liquidez') },
+      },
+      post: {
+        tags: ['Cross-chain'],
+        summary: 'Publica liquidez do solver com taxa e tier de risco',
+        security: auth,
+        responses: { '201': ok('Liquidez registrada'), '422': erro('Campos inválidos') },
+      },
+    },
+    '/v1/web3/intents': {
+      get: {
+        tags: ['Cross-chain'],
+        summary: 'Lista intents cross-chain do titular',
+        security: auth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['OPEN', 'QUOTED', 'EXECUTED', 'CANCELLED', 'EXPIRED'] } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } },
+        ],
+        responses: { '200': ok('Intents') },
+      },
+      post: {
+        tags: ['Cross-chain'],
+        summary: 'Cria intent, trava unidades em escrow e gera cotações com IA',
+        security: auth,
+        responses: { '201': ok('Intent criado'), '422': erro('Saldo, lane ou prazo inválido') },
+      },
+    },
+    '/v1/web3/intents/{id}': {
+      get: {
+        tags: ['Cross-chain'],
+        summary: 'Detalhe do intent',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Intent'), '404': erro('Intent não encontrado') },
+      },
+    },
+    '/v1/web3/intents/{id}/quotes': {
+      post: {
+        tags: ['Cross-chain'],
+        summary: 'Publica cotação de solver; score 45% preço, 20% taxa, 20% latência, 15% risco',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '201': ok('Cotação registrada'), '422': erro('Campos inválidos') },
+      },
+    },
+    '/v1/web3/intents/{id}/select': {
+      post: {
+        tags: ['Cross-chain'],
+        summary: 'Seleciona cotação vencedora',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Cotação selecionada'), '404': erro('Cotação não encontrada') },
+      },
+    },
+    '/v1/web3/intents/{id}/execute': {
+      post: {
+        tags: ['Cross-chain'],
+        summary: 'Executa intent: troca em lote atômico, emite mensagem CCIP e liquida taxa',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '201': ok('Intent executado'), '422': erro('Liquidez ou mínimo não atendido'), '409': erro('Intent já finalizado') },
+      },
+    },
+    '/v1/web3/intents/{id}/cancel': {
+      post: {
+        tags: ['Cross-chain'],
+        summary: 'Cancela intent e devolve unidades do escrow',
+        security: auth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': ok('Intent cancelado'), '409': erro('Intent já executado') },
+      },
+    },
+    '/v1/web3/intents/overview': {
+      get: {
+        tags: ['Cross-chain'],
+        summary: 'Painel de intents e liquidez do titular',
+        security: auth,
+        responses: { '200': ok('Painel cross-chain') },
+      },
+    },
+    '/v1/web3/ccip/messages': {
+      get: {
+        tags: ['Cross-chain'],
+        summary: 'Mensagens CCIP emitidas (id SHA-256 e sequência por lane)',
+        security: auth,
+        parameters: [
+          { name: 'laneId', in: 'query', schema: { type: 'string' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } },
+        ],
+        responses: { '200': ok('Mensagens') },
       },
     },
   },
