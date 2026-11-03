@@ -25,7 +25,7 @@ import {
   queueEvent,
   resolveRecipient,
 } from './repo.ts';
-import { bootstrapDemoBalances, creditScore, fxSystemOverview, statement } from './bank.ts';
+import { creditScore, fxSystemOverview, statement } from './bank.ts';
 import { assertDocument, assertEmail, assertPhone, formatBRL, normalizeName } from './validation.ts';
 
 export interface RegisterInput {
@@ -178,10 +178,6 @@ export async function register(
   let session: SessionView | null = null;
   if (active) {
     account = await createAccount(env, userId, now);
-    if (demoMode(env)) {
-      await bootstrapDemoBalances(env, userId);
-      account = (await accountByUser(env, userId)) ?? account;
-    }
     session = await createSession(env, userId, meta);
   }
 

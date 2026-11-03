@@ -11,18 +11,18 @@ import { formatDocument, maskDocument, onlyDigits } from '../domain/documents.ts
 
 export const TREASURY_USER_ID = 'bank_user_system';
 export const TREASURY_ACCOUNT_ID = 'bank_acc_system';
-export const TREASURY_OPENING_CENTS = 1_000_000_000; // R$ 10.000.000,00 de capital inicial
+export const TREASURY_OPENING_CENTS = 0; // tesouraria começa zerada: só movimento real gera saldo
 export const DEMO_FUNDING_MAX_CENTS = 1_000_000; // R$ 10.000,00 por aporte
 export const DEMO_FUNDING_DAILY_CENTS = 5_000_000; // R$ 50.000,00 por dia
 
 /**
- * Conta de capital do laboratório: é a contraparte dos aportes demo de grande
- * porte. Diferente da tesouraria operacional, ela existe só em ambiente demo e
- * serve para dar lastro contábil a saldos de demonstração.
+ * Tesouraria de capital: é a contraparte dos aportes de grande porte. Ela abre
+ * zerada e só recebe dinheiro de um aporte anterior — o aporte nunca cria
+ * saldo, ele apenas move o que já existe para a conta do titular.
  */
 export const DEMO_CAPITAL_USER_ID = 'bank_user_capital';
 export const DEMO_CAPITAL_ACCOUNT_ID = 'bank_acc_capital';
-export const DEMO_CAPITAL_OPENING_CENTS = 10_000_000_000_000; // R$ 100.000.000.000,00
+export const DEMO_CAPITAL_OPENING_CENTS = 0; // sem lastro de vitrine: aporte não cria dinheiro
 export const DEMO_CAPITAL_MAX_CENTS = 50_000_000_000_000; // R$ 500.000.000.000,00 por operação
 
 export interface BankAccountRow {
@@ -183,9 +183,12 @@ export function ensureCapital(db: Db, now = Date.now()): void {
   db.prepare(
     `INSERT OR IGNORE INTO bank_users
        (id, name, document, email, phone, password_hash, role, status, created_at, updated_at)
-     VALUES (?, 'Capital de laboratório (demo)', '00000000000002', 'capital@xpartner.internal', NULL,
+     VALUES (?, 'Tesouraria de capital xPartner', '00000000000002', 'capital@xpartner.internal', NULL,
              '!system-account-no-login!', 'SYSTEM', 'ACTIVE', ?, ?)`,
   ).run(DEMO_CAPITAL_USER_ID, timestamp, timestamp);
+  // A conta de capital nasceu com o rótulo da vitrine; o INSERT OR IGNORE não
+  // toca em linha existente, então o nome honesto é corrigido aqui.
+  db.prepare('UPDATE bank_users SET name = ? WHERE id = ?').run('Tesouraria de capital xPartner', DEMO_CAPITAL_USER_ID);
   db.prepare(
     `INSERT OR IGNORE INTO bank_accounts
        (id, user_id, branch, number, kind, status, balance_cents, opening_balance_cents,
@@ -597,7 +600,7 @@ export class BankService {
       };
   }
 
-  /** Aporte da tesouraria em modo demo (dinheiro de teste, com lastro e lançamento contábil). */
+  /** Aporte da tesouraria para um titular: exige saldo de verdade e gera as duas partidas do razão. */
   funding(input: {
     actorUserId: string;
     targetUserId: string;
@@ -612,9 +615,9 @@ export class BankService {
     const timestamp = nowIso(now);
     const amount = assertPositiveCents(input.amountCents, 'amountCents');
     if (amount > DEMO_FUNDING_MAX_CENTS) {
-      throw Errors.validation(`Aporte de teste limitado a ${formatBRL(DEMO_FUNDING_MAX_CENTS)} por operação.`);
+      throw Errors.validation(`Aporte de tesouraria limitado a ${formatBRL(DEMO_FUNDING_MAX_CENTS)} por operação.`);
     }
-    const description = normalizeDescription(input.description ?? 'Aporte de tesouraria (demo)');
+    const description = normalizeDescription(input.description ?? 'Aporte da tesouraria');
 
     return tx(this.db, () => {
       const target = this.db
@@ -713,9 +716,9 @@ export class BankService {
   }
 
   /**
-   * Aporte de capital de laboratório (demo). Credita o titular a partir da conta
-   * de capital, com duas partidas no ledger. Existe para lastrear saldos de
-   * demonstração sem fabricar número na tela.
+   * Aporte da tesouraria de capital. Credita o titular a partir da conta de
+   * capital, com duas partidas no ledger. Existe para dar lastro contábil a um
+   * saldo injetado pelo administrador — nunca para fabricar número na tela.
    */
   demoCapital(input: {
     actorUserId: string;
@@ -735,7 +738,7 @@ export class BankService {
     if (amount > DEMO_CAPITAL_MAX_CENTS) {
       throw Errors.validation(`Aporte de capital limitado a ${formatBRL(DEMO_CAPITAL_MAX_CENTS)} por operação.`);
     }
-    const description = normalizeDescription(input.description ?? 'Aporte de capital de laboratório (demo)');
+    const description = normalizeDescription(input.description ?? 'Aporte de capital da tesouraria');
     const idempotencyKey = input.idempotencyKey?.trim() || undefined;
     if (idempotencyKey && (idempotencyKey.length < 8 || idempotencyKey.length > 120)) {
       throw Errors.validation('Idempotency-Key deve ter entre 8 e 120 caracteres.');
@@ -756,7 +759,7 @@ export class BankService {
             .get(existing.credit_account_id) as unknown as BankAccountRow;
           const capital: RecipientRow = {
             user_id: DEMO_CAPITAL_USER_ID,
-            name: 'Capital de laboratório (demo)',
+            name: 'Tesouraria de capital xPartner',
             document: '00000000000002',
             user_status: 'ACTIVE',
             account_id: DEMO_CAPITAL_ACCOUNT_ID,
@@ -801,7 +804,7 @@ export class BankService {
           `INSERT INTO bank_transfers
              (id, kind, debit_account_id, credit_account_id, amount_cents, description, status,
               end_to_end_id, idempotency_key, request_hash, initiator_id, recipient_name, channel, created_at)
-           VALUES (?, 'FUNDING', ?, ?, ?, ?, 'POSTED', ?, ?, ?, ?, 'Capital de laboratório (demo)', 'CAPITAL', ?)`,
+           VALUES (?, 'FUNDING', ?, ?, ?, ?, 'POSTED', ?, ?, ?, ?, 'Tesouraria de capital xPartner', 'CAPITAL', ?)`,
         )
         .run(
           id,
@@ -847,7 +850,7 @@ export class BankService {
       const created = this.db.prepare('SELECT * FROM bank_transfers WHERE id = ?').get(id) as unknown as BankTransferRow;
       const counterparty: RecipientRow = {
         user_id: DEMO_CAPITAL_USER_ID,
-        name: 'Capital de laboratório (demo)',
+        name: 'Tesouraria de capital xPartner',
         document: '00000000000002',
         user_status: 'ACTIVE',
         account_id: DEMO_CAPITAL_ACCOUNT_ID,
@@ -972,7 +975,7 @@ export class BankService {
                   : row.channel === 'CAPITAL'
                     ? direction === 'OUT'
                       ? 'Capital enviado'
-                      : 'Aporte de capital demo'
+                      : 'Aporte de capital da tesouraria'
                     : row.kind === 'FUNDING'
                       ? 'Aporte de tesouraria'
                       : direction === 'OUT'

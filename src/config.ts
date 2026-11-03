@@ -128,7 +128,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {  c
     host,
     dbPath: env.DB_PATH ?? path.join('.data', 'xpartner.db'),
     demoMode: bool(env.DEMO_MODE, !isProduction),
-    seedDemo: bool(env.SEED_DEMO, !isProduction),
+    seedDemo: bool(env.SEED_DEMO, false),
     masterKey: masterKey || 'dev-master-key-change-me-please-32-chars',
     tokenTtlSeconds: int(env.TOKEN_TTL_SECONDS, 7200, 60, 86400),
     hmacWindowSeconds: int(env.HMAC_WINDOW_SECONDS, 300, 30, 900),

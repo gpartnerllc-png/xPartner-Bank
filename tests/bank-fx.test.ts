@@ -3,7 +3,6 @@ import test from 'node:test';
 import {
   BankService,
   DEMO_CAPITAL_ACCOUNT_ID,
-  DEMO_CAPITAL_OPENING_CENTS,
   ensureCapital,
   ensureTreasury,
   ledgerTrialBalance,
@@ -11,12 +10,11 @@ import {
 import { BankAuthService } from '../src/modules/bank-auth.ts';
 import {
   BankFxService,
-  FX_TREASURY_OPENING_CENTS,
   FX_TREASURY_WALLET_ID,
   ensureFxTreasury,
   formatFx,
 } from '../src/modules/bank-fx.ts';
-import { testConfig, testDb } from './helpers.ts';
+import { TEST_CAPITAL_CENTS, TEST_FX_TREASURY_CENTS, testConfig, testDb } from './helpers.ts';
 import { buildTestServer } from './test-server.ts';
 
 const PASSWORD = 'SenhaForte#2026';
@@ -67,17 +65,17 @@ test('capital demo: credita com lastro, extrato próprio e idempotência', () =>
   });
   assert.equal(result.account.balanceCents, BRL_CAPITAL);
   assert.equal(result.transfer.direction, 'IN');
-  assert.equal(result.transfer.counterparty.name, 'Capital de laboratório (demo)');
+  assert.equal(result.transfer.counterparty.name, 'Tesouraria de capital xPartner');
 
   const capital = db
     .prepare('SELECT balance_cents FROM bank_accounts WHERE id = ?')
     .get(DEMO_CAPITAL_ACCOUNT_ID) as { balance_cents: number };
-  assert.equal(capital.balance_cents, DEMO_CAPITAL_OPENING_CENTS - BRL_CAPITAL);
+  assert.equal(capital.balance_cents, TEST_CAPITAL_CENTS - BRL_CAPITAL);
   assert.equal(ledgerTrialBalance(db).balanced, true);
 
   const statement = bank.statement(client.account.id);
   assert.equal(statement.balanceCents, BRL_CAPITAL);
-  assert.equal(statement.entries[0]?.kindLabel, 'Aporte de capital demo');
+  assert.equal(statement.entries[0]?.kindLabel, 'Aporte de capital da tesouraria');
   assert.equal(statement.entries[0]?.channel, 'CAPITAL');
   assert.equal(statement.entries[0]?.balanceAfterCents, BRL_CAPITAL);
 
@@ -140,7 +138,7 @@ test('carteira USD: lastro na tesouraria, extrato e idempotência', () => {
   const treasury = db
     .prepare('SELECT balance_cents FROM bank_fx_wallets WHERE id = ?')
     .get(FX_TREASURY_WALLET_ID) as { balance_cents: number };
-  assert.equal(treasury.balance_cents, FX_TREASURY_OPENING_CENTS - USD_CAPITAL);
+  assert.equal(treasury.balance_cents, TEST_FX_TREASURY_CENTS - USD_CAPITAL);
 
   const entries = db
     .prepare(

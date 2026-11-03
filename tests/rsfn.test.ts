@@ -15,7 +15,7 @@ import {
   RsfnService,
   ensureRsfnTransit,
 } from '../src/modules/rsfn.ts';
-import { testConfig, testDb } from './helpers.ts';
+import { TEST_TREASURY_CENTS, testConfig, testDb } from './helpers.ts';
 import { buildTestServer } from './test-server.ts';
 
 const PASSWORD = 'SenhaForte#2026';
@@ -316,7 +316,7 @@ test('rsfn: sem ISPB o envio falha e em produção o aceite manual é bloqueado'
     () => prodRsfn.ack('qualquer', { decision: 'ACCEPT', actorUserId: 'x' }),
     (error: unknown) => error instanceof Error && 'code' in error && (error as { code: string }).code === 'RSFN_CONNECTOR_REQUIRED',
   );
-  assert.equal((db.prepare('SELECT balance_cents FROM bank_accounts WHERE id = ?').get(TREASURY_ACCOUNT_ID) as { balance_cents: number }).balance_cents, 1_000_000_000 - 100_000);
+  assert.equal((db.prepare('SELECT balance_cents FROM bank_accounts WHERE id = ?').get(TREASURY_ACCOUNT_ID) as { balance_cents: number }).balance_cents, TEST_TREASURY_CENTS - 100_000);
 });
 
 test('rsfn api: config, validação, envio, download do XML e aceite do administrador', async () => {

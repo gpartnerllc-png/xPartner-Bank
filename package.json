@@ -12,7 +12,7 @@
     "dev": "node --watch src/main.ts",
     "test": "node --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "demo:balance": "node scripts/demo-balance.ts",
+    "purge:demo": "node scripts/purge-demo.ts",
     "zk:build": "node scripts/zk-build.mjs",
     "check": "npm run typecheck && npm test"
   },

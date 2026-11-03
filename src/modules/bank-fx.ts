@@ -14,7 +14,7 @@ import { TREASURY_USER_ID } from './bank.ts';
  * duas partidas por transferência e lastro na carteira da tesouraria.
  */
 export const FX_TREASURY_WALLET_ID = 'bank_fx_system_usd';
-export const FX_TREASURY_OPENING_CENTS = 10_000_000_000_000; // US$ 100.000.000.000,00 de capital demo
+export const FX_TREASURY_OPENING_CENTS = 0; // câmbio de laboratório aposentado: carteira USD começa zerada
 export const FX_MAX_CENTS = 2_000_000_000_000; // US$ 20.000.000.000,00 por operação
 export const FX_SUPPORTED = new Set(['USD']);
 
@@ -122,7 +122,7 @@ function transferView(row: FxTransferRow, direction: 'IN' | 'OUT', counterpartyN
 
 function normalizeMemo(input: string | undefined): string {
   const value = String(input ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
-  if (!value) return 'Aporte internacional demo';
+  if (!value) return 'Aporte internacional da tesouraria';
   if (value.length > 120) throw Errors.validation('Descrição excede 120 caracteres.');
   return value;
 }
@@ -313,7 +313,7 @@ export class BankFxService {
             .prepare('SELECT * FROM bank_fx_wallets WHERE id = ?')
             .get(existing.credit_wallet_id) as unknown as FxWalletRow;
           return {
-            transfer: transferView(existing, 'IN', 'Tesouraria internacional (demo)'),
+            transfer: transferView(existing, 'IN', 'Tesouraria internacional xPartner'),
             wallet: walletView(wallet),
             replayed: true,
           };
@@ -385,7 +385,7 @@ export class BankFxService {
 
       const created = this.db.prepare('SELECT * FROM bank_fx_transfers WHERE id = ?').get(id) as unknown as FxTransferRow;
       return {
-        transfer: transferView(created, 'IN', 'Tesouraria internacional (demo)', creditAfter),
+        transfer: transferView(created, 'IN', 'Tesouraria internacional xPartner', creditAfter),
         wallet: walletView({ ...wallet, balance_cents: creditAfter }),
         replayed: false,
       };

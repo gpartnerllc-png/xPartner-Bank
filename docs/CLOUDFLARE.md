@@ -97,19 +97,17 @@ Testes em `test/schema.test.ts` verificam: débito/crédito corretos, duas parti
 | `GET/DELETE` | `/v1/bank/admin/users/:id` | ✅ | ✅ |
 | `POST` | `/v1/bank/admin/users/:id/approve\|reject\|block\|unblock\|reset-password` | ✅ | ✅ |
 | `GET` | `/v1/bank/admin/audit` | ✅ | ✅ |
-| `GET` | `/v1/bank/rsfn/*` (config, validate, transfers, messages, XSD) | ✅ | — (somente Node) |
-| `GET/POST/DELETE` | `/v1/bank/pix/keys*` (chaves, EVP, remoção e BR Code) | ✅ | — (somente Node) |
-| `GET` | `/v1/bank/pix/lookup` | ✅ | — (somente Node) |
-| `GET` | `/v1/bank/accounts/validate` | ✅ | — (somente Node) |
-| `GET/POST` | `/v1/bank/credit/line` · `/quote` · `/contracts*` (contratos, parcelas, liquidação, CSV) | ✅ | — (somente Node) |
-| `GET/POST` | `/v1/bank/pdv/sales*` (venda, NFC-e, XML, CSV) | ✅ | — (somente Node) |
-| `GET/POST` | `/v1/bank/demo/capital` · `/v1/bank/demo/fx` · `/v1/bank/fx/wallets*` (capital demo e carteira USD) | ✅ | — (somente Node) |
+| `GET` | `/v1/bank/admin/demo-data` · `POST .../purge` | ✅ | ✅ (D1 + Durable Object do lojista) |
+| `GET` | `/v1/bank/rsfn/config` · `/validate` · `/transfers` · `/messages` · `/pag0004.xsd` | ✅ | ✅ |
+| `GET/POST/DELETE` | `/v1/bank/pix/keys` · `/keys/evp` | ✅ | ✅ |
+| `GET` | `/v1/bank/recipients/lookup` | ✅ | ✅ |
+| `GET/POST` | `/v1/bank/credit/score` · `/quote` · `/contracts` · `/contracts.csv` | ✅ | ✅ |
+| `GET/POST` | `/v1/bank/demo/capital` · `/demo/fx` · `GET /v1/bank/fx/wallets` | ✅ | ✅ |
+| `GET` | `/v1/bank/pdv/sales*` | ✅ | — (somente Node) |
 
-O canal **RSFN/PAG0004** roda apenas no núcleo Node: depende de `node:crypto` para SHA-256 dos documentos, leitura do XSD em disco e da câmara de compensação no mesmo SQLite transacional. As **chaves Pix, o BR Code EMV/CRC16 e o DV FEBRABAN** também ficam no núcleo nesta versão: dependem do mesmo cadastro e ledger transacional, e a resolução de chave é local (sem DICT). O Worker não replica essas rotas; contratos em [RSFN](RSFN.md) e [PIX](PIX.md).
+A paridade é de **coleção**, não de item: o edge atende as listas, o cadastro, a sessão, as transferências, o extrato, o crédito (cotação, contratos e CSV), as chaves Pix, o RSFN, o capital/USD e a limpeza de demonstração. O que ainda **só existe no núcleo** é o que depende de identificar um registro por `:id` ou de escrever em dois bancos na mesma transação SQLite: `GET /v1/bank/transfers/:id` (comprovante), o ciclo de vida administrativo por usuário (`approve|reject|block|unblock|reset-password`, `DELETE /users/:id`), os contratos de crédito por id com pagamento de parcela e liquidação antecipada, a linha de crédito (`/credit/line`), o **PDV/NFC-e** (assinatura RSA, numeração síncrona e XML), os documentos por mensagem RSFN e o aceite da câmara, o BR Code por chave, a consulta por chave (`/pix/lookup`), a validação de conta (`/accounts/validate`) e o extrato da carteira USD por moeda. Para esses casos o contrato é o do núcleo; o edge devolve `404` ou `503 NOT_AVAILABLE`.
 
-O **crédito e o PDV/NFC-e** também ficam no núcleo: o desembolso precisa debitar a tesouraria e creditar o titular na mesma transação que grava contrato/parcelas, e a NFC-e usa assinatura RSA e alocação de numeração síncrona. O D1 do edge não participa dessa operação; contratos em [CREDITO.md](CREDITO.md).
-
-O **capital demo e a carteira USD** também são exclusivos do núcleo nesta versão: o aporte precisa debitar a contraparte e creditar o titular na mesma transação SQL, e o livro FX tem tabelas e tesouraria próprias (`bank_fx_*`). São valores de laboratório, sem câmbio ou remessa; contrato em [BANCO.md](BANCO.md).
+O **capital e a carteira USD** estão nos dois lados e seguem a mesma regra: abrem zerados, o aporte debita a contraparte e credita o titular na mesma transação e, sem lastro, a resposta é `TREASURY_EMPTY` / `CAPITAL_EMPTY`. **Não há câmbio nem remessa internacional**; contrato em [BANCO.md](BANCO.md).
 
 ## 4. Segurança no edge
 
@@ -136,13 +134,15 @@ cd cloudflare
 npm ci
 npm run db:migrate:local
 npm run dev      # http://localhost:8787
-npm test         # 12 testes
+npm test         # 32 testes
 npm run check    # tsc strict
 ```
 
 Para produção: crie D1, KV, R2 e filas; preencha os IDs; publique os segredos; rode `npm run db:migrate`; então `npm run deploy`. Passo a passo em [cloudflare/README.md](../cloudflare/README.md).
 
-**Estado atual (2026-11-01): publicado em produção.** D1 `xpartner-bank` (id `2bbeea7f-0f07-4dec-8bcb-1152a68660e6`) com a migração `0001_bank` aplicada, namespace KV reutilizado (`XPARTNER_KV`, id `d3f7a791713342e4a0e2a04f3f5e4a8b`), bucket R2 `xpartner-bank-receipts` criado, filas `xpartner-bank-events` + DLQ criadas e Workers AI vinculado. Worker live em `https://xpartner-bank-edge.contatodroppfy.workers.dev` (`GET /v1/bank/status` responde com o mapa de capacidades do edge).
+**Estado atual (2026-11-03): publicado em produção.** D1 `xpartner-bank` (id `2bbeea7f-0f07-4dec-8bcb-1152a68660e6`) com as migrações `0001` a `0006` aplicadas, namespace KV reutilizado (`XPARTNER_KV`, id `d3f7a791713342e4a0e2a04f3f5e4a8b`), bucket R2 `xpartner-bank-receipts` criado, filas `xpartner-bank-events` + DLQ criadas e Workers AI vinculado. Worker live em `https://xpartner-bank-edge.contatodroppfy.workers.dev` (`GET /v1/bank/status` responde com o mapa de capacidades do edge).
+
+`0006_real_data_baseline.sql` é o baseline de fatos reais: apaga os lançamentos de demonstração do D1 na ordem que as chaves estrangeiras exigem, remove os usuários de teste `@xpartner.test` com suas contas e carteiras, zera `balance_cents`/`opening_balance_cents` e renomeia a conta de sistema para **Tesouraria de capital xPartner**. É **aditiva em estrutura** — nenhuma tabela some, nenhuma coluna é destruída e a trilha de auditoria continua. Depois dela, o painel público só mostra o que o titular lançou. A mesma limpeza pode ser refeita pelo console do `/bank` (`POST /v1/bank/admin/demo-data/purge`), que apaga o D1 e chama o Durable Object do lojista para apagar o SQLite dele.
 
 ## 7. O que não está integrado
 

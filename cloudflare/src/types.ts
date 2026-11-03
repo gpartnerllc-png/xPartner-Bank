@@ -7,6 +7,7 @@ export interface Env {
   ASSETS?: Fetcher;
   ENVIRONMENT?: string;
   DEMO_MODE?: string;
+  SEED_DEMO?: string;
   APP_ORIGIN?: string;
   SESSION_TTL_SECONDS?: string;
   BOOTSTRAP_TOKEN?: string;

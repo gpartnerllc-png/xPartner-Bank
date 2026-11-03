@@ -67,13 +67,13 @@ Sequência dentro de **uma transação SQL** (`BEGIN IMMEDIATE`):
 
 **Comprovante** (`GET /v1/bank/transfers/:id`): partes mascaradas, as duas partidas do razão, `balanced: true` e hash de integridade dos dados. Divergência de hash significa adulteração.
 
-**Aporte de tesouraria** (`POST /v1/bank/demo/credit`): existe **somente em demo**, com teto de R$ 10.000,00 por aporte e R$ 50.000,00 por dia por conta, e é rotulado como aporte demo no extrato. Não é receita nem transferência de terceiro.
+**Aporte de tesouraria** (`POST /v1/bank/demo/credit`): disponível apenas com `DEMO_MODE=true`, com teto de R$ 10.000,00 por aporte e R$ 50.000,00 por dia por conta. O valor **sai do saldo real da tesouraria**; se ela estiver zerada, a rede recusa com `TREASURY_EMPTY` em vez de inventar número na tela. Não é receita nem transferência de terceiro, e aparece no extrato como **Aporte de tesouraria**.
 
-## 4. Capital demo e carteira internacional
+## 4. Aporte de capital e carteira internacional
 
-Dois caminhos permitem saldos de laboratório sem inventar número na tela. Ambos são **exclusivos de demo**, exigem `ADMIN` com senha já trocada e gravam evento no outbox e trilha de auditoria.
+Dois caminhos movem saldo entre a tesouraria e o titular. Ambos exigem `ADMIN` com senha já trocada, geram as duas partidas do razão e gravam evento no outbox e trilha de auditoria. **Nenhum dos dois abre com saldo**: tesouraria, conta de capital e tesouraria USD começam em R$ 0,00 / US$ 0,00, então só sai dinheiro de onde ele entrou de verdade.
 
-**Capital em BRL** (`POST /v1/bank/demo/capital`): a contraparte é uma conta de capital do sistema (`Capital de laboratório (demo)`, agência `0000`, número `99999999`), que nasce com R$ 100.000.000.000,00 de abertura. O aporte debita a conta de capital, credita o titular e grava duas partidas em `bank_ledger` com canal `CAPITAL`; o extrato mostra **Aporte de capital demo**. Teto de R$ 500.000.000.000,00 por operação, respeitando `Number.isSafeInteger`, com idempotência de 8 a 120 caracteres. O balanço continua fechado.
+**Capital em BRL** (`POST /v1/bank/demo/capital`): a contraparte é a conta de capital do sistema (**Tesouraria de capital xPartner**, agência `0000`, número `99999999`), que nasce zerada. O aporte debita a conta de capital, credita o titular e grava duas partidas em `bank_ledger` com canal `CAPITAL`; o extrato mostra **Aporte de capital da tesouraria**. Sem lastro, a operação é recusada com `CAPITAL_EMPTY`. Teto de R$ 500.000.000.000,00 por operação, respeitando `Number.isSafeInteger`, com idempotência de 8 a 120 caracteres. O balanço continua fechado.
 
 **Carteira USD** (`GET /v1/bank/fx/wallets`, `POST /v1/bank/demo/fx`): a conta corrente do núcleo é só BRL e `bank_accounts.user_id` é único, então a moeda estrangeira vive em um **livro próprio**:
 
@@ -83,13 +83,16 @@ Dois caminhos permitem saldos de laboratório sem inventar número na tela. Ambo
 | `bank_fx_transfers` | transferência entre carteiras com idempotência por iniciador |
 | `bank_fx_entries` | duas partidas por transferência com `balance_after_cents` |
 
-A tesouraria USD (`bank_fx_system_usd`) abre com US$ 100.000.000.000,00 de capital demo e é a única origem dos aportes demo; versões anteriores com abertura menor são reconciliadas para cima com trilha de auditoria. O limite por operação é US$ 20.000.000.000,00, o memo padrão é **Aporte internacional demo** e o extrato por moeda devolve contraparte, direção, saldo após cada lançamento e E2E. **Não existe câmbio, remessa internacional, correspondente no exterior nem conversão BRL↔USD** — é um livro demo separado, rotulado assim na API e na interface.
+A tesouraria USD (`bank_fx_system_usd`) abre zerada e é a única origem dos aportes em dólar; ela só tem saldo depois que alguém o creditou por fora. O limite por operação é US$ 20.000.000.000,00, o memo padrão é **Aporte internacional da tesouraria** e o extrato por moeda devolve contraparte, direção, saldo após cada lançamento e E2E. Tesouraria zerada devolve `TREASURY_EMPTY`. **Não existe câmbio, remessa internacional, correspondente no exterior nem conversão BRL↔USD** — é um livro separado, rotulado assim na API e na interface.
 
-**Script de saldo-alvo** (`npm run demo:balance`): recebe `--document`, `--email` ou `--user-id` e `--brl`/`--usd`, calcula a diferença até o alvo e credita apenas o que falta. Nunca debita, recusa produção e encerra com erro se o ledger divergir.
+**Não há script de saldo-alvo.** A rede não conhece `npm run demo:balance`: nenhum comando credita um valor "de mentira" para encher a tela. O que existe é a limpeza de demonstração, que apaga o que a vitrine criou e zera os saldos que ficaram para trás.
 
 ```bash
-npm run demo:balance -- --document 34259998854 --brl 2000000000 --usd 3000000000
+npm run purge:demo -- --dry-run
+npm run purge:demo -- --confirm "APAGAR DADOS DE DEMONSTRACAO"
 ```
+
+O script grava uma cópia do banco em `.data/backups` antes de qualquer escrita, apaga as tabelas na ordem que as chaves estrangeiras exigem (filhas primeiro), remove os usuários de teste `@xpartner.test` junto com suas contas e carteiras, zera `balance_cents`/`opening_balance_cents` de todas as contas e carteiras e encerra conferindo o balanço do razão. comerciantes, terminais, adquirentes, contas contábeis e a trilha de auditoria permanecem. As mesmas funções estão expostas no `/bank`, na seção de administrador (**Limpeza de demonstração**), via `GET /v1/bank/admin/demo-data` (prévia) e `POST /v1/bank/admin/demo-data/purge` (execução, exige a frase e encerra todas as sessões).
 
 ## 5. Extrato e score
 
@@ -158,7 +161,7 @@ Todas essas rotas também existem no Worker Cloudflare, com exceção dos compro
 
 ## 8. Interface
 
-`public/bank.html` em `/bank`: login e cadastro, painel com saldo e limite, transferência guiada com busca de favorecido, extrato com saldo corrente, score, **crédito** (simulação, contratação, agenda, pagamento e liquidação), **carteira USD** (saldo e livro próprios), **aporte de capital demo** (BRL ou USD, visível só para admin em demo), segurança (troca de senha) e console administrativo com aprovação, bloqueio, exclusão, reset de senha e auditoria. Tema Inter laranja + neon verde sobre fundo navy.
+`public/bank.html` em `/bank`: login e cadastro, painel com saldo e limite, transferência guiada com busca de favorecido, extrato com saldo corrente, score, **crédito** (simulação, contratação, agenda, pagamento e liquidação), **carteira USD** (saldo e livro próprios), **aporte de capital da tesouraria** (BRL ou USD, visível só para admin e sempre lastreado), segurança (troca de senha) e console administrativo com aprovação, bloqueio, exclusão, reset de senha, auditoria e **Limpeza de demonstração**. Tema claro (roxo/laranja/azul/verde sobre fundo branco), sem painel escuro.
 
 A aba **Pix** registra chaves do titular, gera BR Code EMV e paga por chave; os detalhes estão em [PIX.md](PIX.md). A aba **Crédito** opera antecipação e empréstimo com agenda de parcelas — contrato em [CREDITO.md](CREDITO.md). O console operacional em `/core` usa as mesmas APIs para KPIs, contas, chaves, transferência real, validador FEBRABAN, crédito, PDV/NFC-e, carteira USD e trilha de eventos.
 
@@ -184,9 +187,9 @@ npm test
 | Crédito (antecipação e empréstimo) | real e atômico, com capital próprio da tesouraria; **sem registro no SCR/BACEN** |
 | Agenda, parcela e liquidação antecipada | reais, com taxa congelada e desconto de juros futuros |
 | PDV / NFC-e | venda e liquidação reais no ledger; **adquirente e SEFAZ simulados, somente demo** |
-| Aporte de tesouraria | demo, rotulado |
-| Capital demo (BRL) | real no ledger, contraparte de capital, apenas demo e rotulado |
-| Carteira USD | livro próprio real de dupla entrada com tesouraria USD; **demo, sem câmbio ou remessa** |
-| Saldo-alvo via CLI | real e idempotente, credita só a diferença e nunca debita |
+| Aporte de tesouraria | exige `DEMO_MODE=true`, teto de R$ 10.000,00 por aporte e R$ 50.000,00 por dia; sai do saldo real da tesouraria ou recusa com `TREASURY_EMPTY` |
+| Capital (BRL) | real no ledger, contraparte é a **Tesouraria de capital xPartner** que abre zerada; sem lastro, `CAPITAL_EMPTY` |
+| Carteira USD | livro próprio real de dupla entrada, tesouraria USD abre zerada; **sem câmbio ou remessa** |
+| Limpeza de demonstração | `npm run purge:demo` e as rotas de admin: backup + auditoria antes de escrever, ordem de chaves estrangeiras testada, saldos zerados e balanço conferido |
 | Transferência para outro banco | **não existe** — exige PSP/SPI |
 | Emissão de cartão, câmbio, mora e renegociação | roadmap |

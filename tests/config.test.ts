@@ -28,9 +28,14 @@ test('config: produção proíbe modo demo e liga guardas', () => {
   assert.equal(config.seedDemo, false);
 });
 
-test('config: desenvolvimento liga demo por padrão', () => {
+test('config: desenvolvimento liga demo mas não semeia dados de vitrine', () => {
   const config = loadConfig({ NODE_ENV: 'development' } as NodeJS.ProcessEnv);
   assert.equal(config.demoMode, true);
-  assert.equal(config.seedDemo, true);
+  assert.equal(config.seedDemo, false);
   assert.ok(config.masterKey.length >= 32);
+});
+
+test('config: SEED_DEMO=true continua sendo a única porta da vitrine', () => {
+  const config = loadConfig({ NODE_ENV: 'development', SEED_DEMO: 'true' } as NodeJS.ProcessEnv);
+  assert.equal(config.seedDemo, true);
 });

@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { FastifyRequest } from 'fastify';
 import { ensureTreasury, BankService, TREASURY_ACCOUNT_ID } from '../src/modules/bank.ts';
 import { BankAuthService } from '../src/modules/bank-auth.ts';
-import { testConfig, testDb } from './helpers.ts';
+import { TEST_TREASURY_CENTS, testConfig, testDb } from './helpers.ts';
 import { buildTestServer } from './test-server.ts';
 
 const PASSWORD = 'SenhaForte#2026';
@@ -121,9 +121,10 @@ test('banco: primeiro usuário vira admin, aprova cliente e transferência inter
   assert.equal(trial.balanced, true);
   assert.equal(trial.debitCents, trial.creditCents);
 
+  // 3 contas de titulares + tesouraria e capital de sistema do fixture.
   const contas = db.prepare('SELECT COUNT(*) AS count FROM contas').get() as { count: number };
   const transacoes = db.prepare('SELECT COUNT(*) AS count FROM transacoes').get() as { count: number };
-  assert.equal(contas.count, 3);
+  assert.equal(contas.count, 4);
   assert.equal(transacoes.count, 3);
 
   const score = bank.creditScore(clientAccount.id);
@@ -136,7 +137,7 @@ test('banco: primeiro usuário vira admin, aprova cliente e transferência inter
   assert.equal(receipt.ledger.length, 2);
 
   const treasury = db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(TREASURY_ACCOUNT_ID) as { balance_cents: number };
-  assert.equal(treasury.balance_cents, 1_000_000_000 - 800_000);
+  assert.equal(treasury.balance_cents, TEST_TREASURY_CENTS - 800_000);
   assert.equal(
     bank.statement(admin.account!.id).balanceCents,
     500_000 + 125_000,

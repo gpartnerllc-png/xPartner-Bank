@@ -39,8 +39,6 @@ const FX_TREASURY_WALLET_ID = 'bank_fx_system_usd';
 const FX_MAX_CENTS = 2_000_000_000_000; // US$ 20 bilhões por operação
 const DEMO_FUNDING_MAX_CENTS = 1_000_000;
 const DEMO_FUNDING_DAILY_CENTS = 5_000_000;
-export const DEMO_START_BRL_CENTS = 200_000_000_000; // R$ 2 bilhões
-export const DEMO_START_USD_CENTS = 300_000_000_000; // US$ 3 bilhões
 
 interface TransferInput {
   amountCents?: number | string;
@@ -353,7 +351,7 @@ export async function funding(
     `INSERT INTO bank_transfers
       (id, kind, debit_account_id, credit_account_id, amount_cents, description, status,
        end_to_end_id, idempotency_key, request_hash, initiator_id, recipient_name, created_at)
-     VALUES (?, 'FUNDING', ?, ?, ?, 'Aporte de tesouraria (demo)', 'POSTED', ?, NULL, NULL, ?, ?, ?)`,
+     VALUES (?, 'FUNDING', ?, ?, ?, 'Aporte de capital da tesouraria', 'POSTED', ?, NULL, NULL, ?, ?, ?)`,
   )
     .bind(transferId, TREASURY_ACCOUNT_ID, account.id, amount, e2e, context.user.id, context.user.name, now)
     .run();
@@ -569,8 +567,8 @@ export async function demoCapital(
     throw new HttpError(422, 'CAPITAL_LIMIT', `Aporte de capital limitado a ${formatBRL(CAPITAL_MAX_CENTS)} por operação.`);
   }
   const targetUserId = input.targetUserId || context.user.id;
-  const description = sanitizeDescription(input.description ?? 'Aporte de capital de laboratório (demo)')
-    || 'Aporte de capital de laboratório (demo)';
+  const description = sanitizeDescription(input.description ?? 'Aporte de capital da tesouraria')
+    || 'Aporte de capital da tesouraria';
   const result = await postCapital(env, context.user.id, targetUserId, amount, description);
   return { transfer: await transferView(env, result.transfer, 'IN'), account: accountView(result.account) };
 }
@@ -592,8 +590,8 @@ export async function demoFx(
     throw new HttpError(422, 'FX_LIMIT', `Aporte internacional limitado a ${formatUSD(FX_MAX_CENTS)} por operação.`);
   }
   const targetUserId = input.targetUserId || context.user.id;
-  const memo = sanitizeDescription(input.memo ?? 'Aporte internacional de laboratório (demo)')
-    || 'Aporte internacional de laboratório (demo)';
+  const memo = sanitizeDescription(input.memo ?? 'Aporte internacional da tesouraria')
+    || 'Aporte internacional da tesouraria';
   const result = await postFxFund(env, context.user.id, targetUserId, amount, memo);
   const wallet = walletView(result.wallet);
   return {
@@ -606,35 +604,13 @@ export async function demoFx(
       amountCents: amount,
       amountFormatted: formatUSD(amount),
       memo,
-      counterpartyName: 'Tesouraria internacional (demo)',
+      counterpartyName: 'Tesouraria internacional xPartner',
       createdAt: result.createdAt,
       balanceAfterCents: wallet.balanceCents,
       balanceAfterFormatted: wallet.balanceFormatted,
     },
     wallet,
   };
-}
-
-/** Primeiro admin do modo demo nasce com os saldos de demonstração lastreados. */
-export async function bootstrapDemoBalances(env: Env, userId: string): Promise<void> {
-  if (!boolEnv(env.DEMO_MODE)) return;
-  const existing = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM bank_transfers t
-       JOIN bank_accounts a ON a.id = t.credit_account_id
-      WHERE a.user_id = ? AND t.kind = 'FUNDING'`,
-  )
-    .bind(userId)
-    .first<{ n: number }>();
-  if ((existing?.n ?? 0) > 0) return;
-  await postCapital(env, userId, userId, DEMO_START_BRL_CENTS, 'Capital inicial de demonstração');
-  await postFxFund(env, userId, userId, DEMO_START_USD_CENTS, 'Capital internacional de demonstração');
-  await audit(env, {
-    actorId: userId,
-    action: 'bank.demo.bootstrap',
-    resource: 'bank_user',
-    resourceId: userId,
-    details: { brlCents: DEMO_START_BRL_CENTS, usdCents: DEMO_START_USD_CENTS },
-  });
 }
 
 function rangeBound(value: string, edge: 'start' | 'end'): string {

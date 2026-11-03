@@ -2,7 +2,7 @@
 
 Espelho de conta digital do xPartner Bank rodando 100% no edge: **Workers + D1 + KV + R2 + Queues + Workers AI**. É a mesma superfície de conta, cadastro, aprovação e transferência interna do núcleo Node, com o livro-razão protegido por trigger atômico no D1.
 
-> **Estado real:** o Worker está implementado, tipado, testado (29 testes) e **publicado em produção** em `https://xpartner-bank-edge.contatodroppfy.workers.dev` (versão `1.2.0-edge`). Recursos provisionados na conta: D1 `xpartner-bank` (`2bbeea7f-0f07-4dec-8bcb-1152a68660e6`, migrações `0001` a `0005` aplicadas), namespace KV `CACHE`, bucket R2 `xpartner-bank-receipts`, filas `xpartner-bank-events`/`xpartner-bank-events-dlq` e binding Workers AI. As páginas de `public/` (dashboard, `/bank`, `/core`, `/app`, `/pay`, `/tokenization`, `/web3` e `/docs`) são servidas como **Workers Static Assets** no mesmo domínio — a mesma `bank.html` conversa com a API do edge por origem única. A camada `/v1/web3/*` cobre DVP, oráculo, agro, ZK, agentes, paymaster, Aladdin e intents cross-chain.
+> **Estado real:** o Worker está implementado, tipado, testado (32 testes) e **publicado em produção** em `https://xpartner-bank-edge.contatodroppfy.workers.dev`. Recursos provisionados na conta: D1 `xpartner-bank` (`2bbeea7f-0f07-4dec-8bcb-1152a68660e6`, migrações `0001` a `0006` aplicadas), namespace KV `CACHE`, bucket R2 `xpartner-bank-receipts`, filas `xpartner-bank-events`/`xpartner-bank-events-dlq` e binding Workers AI. As páginas de `public/` (dashboard, `/bank`, `/core`, `/app`, `/pay`, `/tokenization`, `/web3` e `/docs`) são servidas como **Workers Static Assets** no mesmo domínio — a mesma `bank.html` conversa com a API do edge por origem única. A camada `/v1/web3/*` cobre DVP, oráculo, agro, ZK, agentes, paymaster, Aladdin e intents cross-chain. **A partir de `0006` a rede mostra só fatos reais**: lançamentos de vitrine apagados, saldos zerados e nada de número inventado na tela.
 
 ## Por que existe
 
@@ -104,23 +104,23 @@ npm run deploy
 | `npm run dev` | Worker local com D1/KV/R2/fila simulados |
 | `npm run deploy` | Publica em produção |
 | `npm run check` | TypeScript strict no `src/` |
-| `npm test` | 29 testes de schema, trigger, idempotência, segurança e domínio Web3 |
+| `npm test` | 32 testes de schema, trigger, idempotência, segurança, ordem das chaves estrangeiras da limpeza e domínio Web3 |
 | `npm run db:migrate:local` | Aplica `migrations/` no D1 local |
 | `npm run db:migrate` | Aplica `migrations/` no D1 remoto |
 | `npm run tail` | Logs em tempo real |
 
 ## Migração
 
-`migrations/0001_bank.sql` cria `bank_users`, `bank_accounts`, `bank_sessions`, `bank_transfers`, `bank_ledger`, `bank_audit`, `bank_sequences`, `edge_events`, as views `contas`/`transacoes` e o trigger `bank_transfers_post`. `0002` adiciona capital demo e carteiras FX, `0003` completa a paridade Pix/crédito/RSFN, `0004` corrige o trigger de transferência e `0005_web3_aladdin.sql` adiciona redes, oráculo, holdings, DVP, agro, ZK, agentes, paymaster, risco Aladdin, empréstimos, lanes CCIP, liquidez, intents, mensagens e a cadeia de âncoras. Tudo é **aditivo**: nada é apagado. Para evoluir, crie `0006_*.sql` — nunca edite uma migração já aplicada.
+`migrations/0001_bank.sql` cria `bank_users`, `bank_accounts`, `bank_sessions`, `bank_transfers`, `bank_ledger`, `bank_audit`, `bank_sequences`, `edge_events`, as views `contas`/`transacoes` e o trigger `bank_transfers_post`. `0002` adiciona a conta de capital e as carteiras FX, `0003` completa a paridade Pix/crédito/RSFN, `0004` corrige o trigger de transferência, `0005_web3_aladdin.sql` adiciona redes, oráculo, holdings, DVP, agro, ZK, agentes, paymaster, risco Aladdin, empréstimos, lanes CCIP, liquidez, intents, mensagens e a cadeia de âncoras e `0006_real_data_baseline.sql` é o baseline de fatos reais: apaga os lançamentos de demonstração na ordem das chaves estrangeiras, remove os usuários `@xpartner.test`, zera todos os saldos e renomeia a conta de sistema para **Tesouraria de capital xPartner**. É **aditiva em estrutura**: nenhuma tabela some, nenhuma coluna é destruída e a trilha de auditoria continua. Para evoluir, crie `0007_*.sql` — nunca edite uma migração já aplicada.
 
 ## Testes
 
 ```bash
-npm test        # 29 testes
+npm test        # 32 testes
 npm run check   # tsc strict
 ```
 
-`test/schema.test.ts` prova que o trigger debita e credita, grava duas partidas, aborta tudo em saldo insuficiente, bloqueia auto-transferência e que a chave de idempotência é única. `test/security.test.ts` cobre PBKDF2, política de senha, senha temporária, CPF/CNPJ, dígito de conta, parsing de valores e chave de idempotência. `test/web3-domain.test.ts` prova determinismo do Monte Carlo, faixas de score/teto, LTV, conversão do oráculo e estabilidade dos digests Web3.
+`test/schema.test.ts` prova que o trigger debita e credita, grava duas partidas, aborta tudo em saldo insuficiente, bloqueia auto-transferência e que a chave de idempotência é única. `test/security.test.ts` cobre PBKDF2, política de senha, senha temporária, CPF/CNPJ, dígito de conta, parsing de valores e chave de idempotência. `test/web3-domain.test.ts` prova determinismo do Monte Carlo, faixas de score/teto, LTV, conversão do oráculo e estabilidade dos digests Web3. `test/demo-purge.test.ts` monta o schema a partir das migrações, lê as chaves estrangeiras reais de cada tabela e garante que **nenhuma sequência de apagamento viola FK** — nem a lista de `ACTIVITY_TABLES`, nem os `DELETE FROM` de `0006` — e executa a limpeza com dados na mira para conferir que as tabelas esvaziam, os usuários de teste saem, os saldos zeram e a conta de capital fica com o nome honesto.
 
 ## Diferenças honestas em relação ao núcleo Node
 

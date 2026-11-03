@@ -25,6 +25,7 @@ import { seedBilling } from '../../../src/modules/billing-seed.ts';
 import { seedOpenFinance } from '../../../src/modules/openfinance-seed.ts';
 import { seedInvestments } from '../../../src/modules/investments-seed.ts';
 import { DoDb, type SqlStorageLike } from './sqlite.ts';
+import { PURGE_CONFIRM_PHRASE, previewPurge, purgeDemoData } from '../../../src/modules/demo-purge.ts';
 
 const TOKEN_TTL_SECONDS = 86_400;
 
@@ -48,7 +49,7 @@ function demoConfig(masterKey: string): AppConfig {
     host: '0.0.0.0',
     dbPath: ':memory:',
     demoMode: true,
-    seedDemo: true,
+    seedDemo: false,
     masterKey,
     tokenTtlSeconds: TOKEN_TTL_SECONDS,
     hmacWindowSeconds: 300,
@@ -320,6 +321,19 @@ export class MerchantCore {
     };
     const db = this.db;
     const services = this.services;
+
+    // ── Limpeza de demonstração (chamada apenas pelo Worker) ───────────────
+    // Durable Objects não têm URL pública: só o Worker reaches este caminho.
+    if (path === '/internal/admin/demo-data' && method === 'GET') {
+      return json(previewPurge(db));
+    }
+    if (path === '/internal/admin/demo-data/purge' && method === 'POST') {
+      const payload = await body();
+      if (payload.confirm !== PURGE_CONFIRM_PHRASE) {
+        throw Errors.validation('Frase de confirmação ausente ou incorreta.');
+      }
+      return json(purgeDemoData(db, { actor: String(payload.actor ?? 'edge:worker') }));
+    }
 
     // ── Sessão demo ────────────────────────────────────────────────────────
     if (method === 'POST' && path === '/v1/auth/demo') {

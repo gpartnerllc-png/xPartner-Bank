@@ -39,6 +39,7 @@ import type { BankFxService } from '../modules/bank-fx.ts';
 import type { RsfnService } from '../modules/rsfn.ts';
 import { clearSessionCookie, sessionCookie } from '../modules/bank-auth.ts';
 import { buildReadiness } from '../modules/readiness.ts';
+import { purgeDemoData, previewPurge, PURGE_CONFIRM_PHRASE } from '../modules/demo-purge.ts';
 import { registerTokenizationRoutes } from './tokenization-routes.ts';
 import { registerWeb3Routes } from './web3-routes.ts';
 import { registerAladdinRoutes } from './aladdin-routes.ts';
@@ -801,11 +802,11 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/bank/pdv/sales.csv': { get: { summary: 'Exporta vendas do PDV em CSV' } },
       '/v1/bank/pdv/sales/{id}/fiscal': { get: { summary: 'Documento fiscal da venda (XML, DANFE e ESC-POS)' } },
       '/v1/bank/pdv/sales/{id}/xml': { get: { summary: 'Download do XML da NFC-e' } },
-      '/v1/bank/demo/credit': { post: { summary: 'Aporte da tesouraria para testes (somente demo)' } },
-      '/v1/bank/demo/capital': { post: { summary: 'Aporte de capital de laboratório com lastro contábil (admin, demo)' } },
-      '/v1/bank/fx/wallets': { get: { summary: 'Carteiras internacionais do titular (USD, demo)' } },
+      '/v1/bank/demo/credit': { post: { summary: 'Aporte da tesouraria para um titular; exige saldo real e exige DEMO_MODE' } },
+      '/v1/bank/demo/capital': { post: { summary: 'Aporte de capital lastreado na Tesouraria de capital (admin); sem lastro, CAPITAL_EMPTY' } },
+      '/v1/bank/fx/wallets': { get: { summary: 'Carteiras internacionais do titular (USD), cada uma com livro próprio' } },
       '/v1/bank/fx/wallets/{currency}/statement': { get: { summary: 'Extrato da carteira internacional com saldo após cada partida' } },
-      '/v1/bank/demo/fx': { post: { summary: 'Aporte internacional de laboratório da tesouraria USD (admin, demo)' } },
+      '/v1/bank/demo/fx': { post: { summary: 'Aporte em USD saindo da tesouraria USD (admin); tesouraria zerada devolve TREASURY_EMPTY' } },
       '/v1/bank/rsfn/config': { get: { summary: 'Configuração do canal RSFN/PAG0004 e limites' } },
       '/v1/bank/rsfn/validate': { post: { summary: 'Valida um XML PAG0004 sem executar movimento' } },
       '/v1/bank/rsfn/transfers': { post: { summary: 'Transferência interbancária RSFN com XML PAG0004 e partidas dobradas' } },
@@ -824,6 +825,12 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/bank/admin/users/{id}/unblock': { post: { summary: 'Reativa usuário bloqueado (admin)' } },
       '/v1/bank/admin/users/{id}/reset-password': { post: { summary: 'Gera senha temporária e revoga sessões (admin)' } },
       '/v1/bank/admin/audit': { get: { summary: 'Trilha de auditoria bancária (admin)' } },
+      '/v1/bank/admin/demo-data': {
+        get: { summary: 'Inventário de lançamentos de demonstração ainda presentes (admin)' },
+      },
+      '/v1/bank/admin/demo-data/purge': {
+        post: { summary: 'Apaga lançamentos de demonstração e zera saldos, exige frase de confirmação (admin)' },
+      },
     },
     components: {
       securitySchemes: {
@@ -1909,7 +1916,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     return reply.status(201).send(result);
   });
 
-  // ── Capital de laboratório e carteira internacional (demo) ────────────────
+  // ── Aporte de capital lastreado e carteira internacional ──────────────────
   app.post('/v1/bank/demo/capital', { schema: { body: bankCapitalSchema } }, async (request, reply) => {
     assertDemo();
     const auth = bankSession(request);
@@ -2263,6 +2270,24 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     bankAdminSession(request);
     const { limit } = request.query as { limit?: string };
     return { data: ctx.bankAuth.auditLog(Number.parseInt(limit ?? '50', 10) || 50) };
+  });
+
+  app.get('/v1/bank/admin/demo-data', async (request) => {
+    bankAdminSession(request);
+    return previewPurge(db);
+  });
+
+  app.post('/v1/bank/admin/demo-data/purge', async (request) => {
+    const auth = bankAdminSession(request);
+    const body = (request.body ?? {}) as { confirm?: string };
+    if (body.confirm !== PURGE_CONFIRM_PHRASE) {
+      throw Errors.validation(
+        `Digite exatamente "${PURGE_CONFIRM_PHRASE}" para apagar os lançamentos de demonstração.`,
+      );
+    }
+    const result = purgeDemoData(db, { actor: auth.user.id });
+    metrics.inc('bank_demo_data_purged_total');
+    return result;
   });
 
   // ── Tokenização, Web3 e agentes ───────────────────────────────────────────

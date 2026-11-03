@@ -660,7 +660,7 @@ export const openapi = {
     '/v1/bank/demo/capital': {
       post: {
         tags: ['Demo'],
-        summary: 'Capital demo para uma conta (somente admin)',
+        summary: 'Aporte de capital lastreado na Tesouraria de capital (somente admin)',
         security: auth,
         parameters: [csrf],
         requestBody: {
@@ -736,6 +736,41 @@ export const openapi = {
         security: auth,
         parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', maximum: 200 } }],
         responses: { '200': ok('Auditoria'), '403': erro('Requer admin') },
+      },
+    },
+    '/v1/bank/admin/demo-data': {
+      get: {
+        tags: ['Administração'],
+        summary: 'Prévia da limpeza: lançamentos de demonstração, saldos e usuários de teste na mira',
+        security: auth,
+        responses: { '200': ok('Prévia da limpeza'), '403': erro('Requer admin') },
+      },
+    },
+    '/v1/bank/admin/demo-data/purge': {
+      post: {
+        tags: ['Administração'],
+        summary: 'Apaga os lançamentos de demonstração, zera saldos e remove usuários de teste',
+        description:
+          'Exige a frase de confirmação no corpo. Apaga primeiro o D1 e depois pede ao Durable Object do lojista que apague o SQLite dele, na ordem que as chaves estrangeiras impõem. Encerra todas as sessões, inclusive a do administrador.',
+        security: auth,
+        parameters: [csrf],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['confirm'],
+                properties: { confirm: { type: 'string', minLength: 1, maxLength: 120 } },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': ok('Resultado da limpeza'),
+          '403': erro('Requer admin'),
+          '422': erro('Frase de confirmação ausente ou diferente'),
+        },
       },
     },
     '/v1/bank/admin/users/{id}': {

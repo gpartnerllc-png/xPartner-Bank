@@ -65,12 +65,22 @@ import { openapi } from './openapi.ts';
 import { clearSessionCookie, nowIso, rateLimit, sessionCookie } from './security.ts';
 import type { RegisterInput } from './auth.ts';
 import * as web3 from './web3-service.ts';
+import {
+  PURGE_CONFIRM_PHRASE,
+  previewEdgePurge,
+  previewMerchantDemoData,
+  purgeEdgeDemoData,
+  purgeMerchantDemoData,
+} from './demo-purge.ts';
 import { MerchantCore } from './merchant/core.ts';
 
 const VERSION = '1.2.0-edge';
 
 let web3Seed: Promise<void> | undefined;
 async function web3Ready(env: Env): Promise<void> {
+  // A rede mostra apenas fatos reais: as trilhas, preços e ofertas de
+  // demonstração só voltam a existir se SEED_DEMO=true for explicitamente definido.
+  if (!boolEnv(env.SEED_DEMO)) return;
   web3Seed ??= web3.ensureWeb3Seed(env).catch((error) => {
     web3Seed = undefined;
     throw error;
@@ -568,6 +578,28 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
         withQuery(url, 'limit') ? Number.parseInt(withQuery(url, 'limit') as string, 10) : 100,
       ),
     });
+  }
+
+  if (path === '/v1/bank/admin/demo-data' && method === 'GET') {
+    requireAdmin(await authenticate(env, request));
+    const [bank, merchant] = await Promise.all([previewEdgePurge(env), previewMerchantDemoData(env)]);
+    return json(env, request, { bank, merchant });
+  }
+
+  if (path === '/v1/bank/admin/demo-data/purge' && method === 'POST') {
+    const admin = requireAdmin(await authenticate(env, request));
+    const body = await readJson<Record<string, unknown>>(request);
+    const confirm = body.confirm as string | undefined;
+    if (confirm !== PURGE_CONFIRM_PHRASE) {
+      throw new HttpError(
+        422,
+        'CONFIRMATION_REQUIRED',
+        `Digite exatamente "${PURGE_CONFIRM_PHRASE}" para apagar os lançamentos de demonstração.`,
+      );
+    }
+    const merchant = await purgeMerchantDemoData(env, admin.user.id, confirm);
+    const bank = await purgeEdgeDemoData(env, admin.user.id, confirm);
+    return json(env, request, { bank, merchant });
   }
 
   if (path === '/v1/bank/admin/rsfn/messages' && method === 'GET') {

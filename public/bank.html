@@ -713,13 +713,6 @@
               <div class="row between small"><span class="muted">Limite sugerido</span><b id="score-limit">—</b></div>
               <button class="btn wide" style="margin-top:14px" data-open-view="score">Ver composição do score</button>
             </div>
-            <div class="card" id="demo-funding-card" hidden>
-              <div class="card-head"><div><h3>Aporte de tesouraria <span class="chip warn">demo</span></h3><p>Dinheiro de teste com lançamento contábil real na tesouraria. Em produção, entradas vêm por Pix/Open Finance.</p></div></div>
-              <form class="form" id="demo-funding-form">
-                <label class="field"><span>Valor do aporte</span><input id="funding-amount" inputmode="decimal" placeholder="100,00" required /></label>
-                <button class="btn neon wide" type="submit">Receber aporte de teste</button>
-              </form>
-            </div>
             <div class="card">
               <div class="card-head"><div><h3>Como funciona</h3><p>Transparência do seu dinheiro.</p></div></div>
               <div class="list small">
@@ -1031,22 +1024,31 @@
           </div>
           <div class="stack">
             <div class="card neon" id="admin-capital-card" hidden>
-              <div class="card-head"><div><h3>Capital de laboratório <span class="chip warn">demo</span></h3><p>Credita saldo de demonstração com lastro em conta de capital e duas partidas no ledger. Em BRL entra na conta corrente; em USD entra na carteira internacional.</p></div></div>
+              <div class="card-head"><div><h3>Aporte de capital da tesouraria</h3><p>Só move dinheiro que realmente existe. Em real sai da conta de capital e entra na conta corrente do titular; em dólar sai da tesouraria internacional e entra na carteira USD. Cada aporte gera as duas partidas no livro-razão. Sem lastro na tesouraria, a operação é recusada.</p></div></div>
               <form class="form" id="admin-capital-form">
                 <label class="field"><span>Cliente</span><select id="capital-user"></select></label>
                 <label class="field"><span>Moeda</span><select id="capital-currency"><option value="BRL">Real (BRL) · conta corrente</option><option value="USD">Dólar (USD) · carteira internacional</option></select></label>
-                <label class="field"><span>Valor</span><input id="capital-amount" inputmode="decimal" placeholder="2.000.000.000,00" required /></label>
-                <button class="btn neon wide" type="submit">Creditar capital demo</button>
+                <label class="field"><span>Valor</span><input id="capital-amount" inputmode="decimal" placeholder="0,00" required /></label>
+                <button class="btn neon wide" type="submit">Creditar aporte</button>
                 <div id="capital-result" class="small muted"></div>
               </form>
             </div>
             <div class="card neon" id="admin-funding-card" hidden>
-              <div class="card-head"><div><h3>Aporte de tesouraria</h3><p>Somente demo. O valor sai da tesouraria e entra na conta do cliente com lançamento contábil.</p></div></div>
+              <div class="card-head"><div><h3>Aporte de tesouraria</h3><p>O valor sai da tesouraria e entra na conta do cliente com lançamento contábil. Se a tesouraria estiver zerada, a rede avisa em vez de inventar saldo.</p></div></div>
               <form class="form" id="admin-funding-form">
                 <label class="field"><span>Cliente</span><select id="admin-funding-user"></select></label>
                 <label class="field"><span>Valor</span><input id="admin-funding-amount" inputmode="decimal" placeholder="1.000,00" required /></label>
                 <button class="btn neon wide" type="submit">Creditar tesouraria</button>
               </form>
+            </div>
+            <div class="card" id="admin-purge-card" hidden>
+              <div class="card-head"><div><h3>Limpeza de demonstração</h3><p>Apaga os lançamentos que a vitrine inventou (vendas, cobranças, Pix, carteiras, Web3) e zera todos os saldos. Continuem na rede: os titulares, as contas, os lojistas cadastrados e a trilha de auditoria. Depois de apagar, tudo que aparecer aqui foi lançado de verdade.</p></div><span class="chip warn" id="purge-badge">0</span></div>
+              <div class="small muted" id="purge-preview">Consultando o que existe para apagar…</div>
+              <div class="list small" id="purge-tables" style="margin-top:10px"></div>
+              <div class="divider"></div>
+              <label class="field"><span>Digite a frase de confirmação</span><input id="purge-confirm" placeholder="APAGAR DADOS DE DEMONSTRACAO" autocomplete="off" /></label>
+              <button class="btn danger wide" id="purge-run">Apagar dados de demonstração</button>
+              <p class="small muted" style="margin-top:8px">Atenção: esta ação não tem volta, encerra todas as sessões (inclusive a sua) e exige novo login. Um backup do banco é gravado antes de apagar.</p>
             </div>
             <div class="card" id="admin-detail-card" hidden>
               <div class="card-head"><div><h3>Detalhe do cliente</h3><p id="admin-detail-sub">—</p></div><button class="btn ghost sm" id="admin-detail-close">Fechar</button></div>
@@ -1426,9 +1428,9 @@
     $('#admin-nav').hidden = !isAdmin;
     $('#admin-nav-label').hidden = !isAdmin;
     $('#password-banner').hidden = !user.mustChangePassword;
-    $('#demo-funding-card').hidden = !state.status || !state.status.demoMode;
     $('#admin-funding-card').hidden = !isAdmin || !state.status || !state.status.demoMode;
     $('#admin-capital-card').hidden = !isAdmin || !state.status || !state.status.demoMode;
+    $('#admin-purge-card').hidden = !isAdmin;
     $('#profile-kv').innerHTML =
       '<dt>Titular</dt><dd>' + esc(user.name) + '</dd>' +
       '<dt>Documento</dt><dd class="mono">' + esc(user.document) + '</dd>' +
@@ -2260,20 +2262,6 @@
     }
   });
 
-  // ── Aporte demo ────────────────────────────────────────────────────
-  $('#demo-funding-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const amount = parseMoney($('#funding-amount').value);
-    if (!Number.isFinite(amount) || amount <= 0) { toast('Informe um valor válido.', 'warn'); return; }
-    try {
-      const result = await api('/v1/bank/demo/credit', { method: 'POST', body: { amountCents: amount } });
-      toast('Aporte de ' + result.transfer.amountFormatted + ' recebido da tesouraria.');
-      $('#funding-amount').value = '';
-      await refreshMe();
-      await loadDashboard();
-    } catch (error) { toast(error.message, 'err'); }
-  });
-
   // ── Extrato ────────────────────────────────────────────────────────
   function statementQuery() {
     if (state.range === 'all') return '?limit=200';
@@ -2379,6 +2367,7 @@
       ).join('') : '<tr><td colspan="4"><div class="empty">Sem eventos.</div></td></tr>';
 
       await loadUsers();
+      await loadPurgePreview();
     } catch (error) { toast(error.message, 'err'); }
   }
 
@@ -2483,6 +2472,81 @@
           '<div class="list-item"><div><b class="small">' + esc(entry.counterparty.name) + '</b><div class="small muted">' + esc(when(entry.createdAt)) + ' · ' + esc(entry.description || entry.kind) + '</div></div><span class="amount ' + (entry.direction === 'IN' ? 'in' : 'out') + '">' + (entry.direction === 'IN' ? '+' : '−') + ' ' + esc(entry.amountFormatted) + '</span></div>'
         ).join('') : '<div class="empty">Sem lançamentos.</div>';
       } catch (error) { toast(error.message, 'err'); }
+    }
+  });
+
+  // ── Limpeza de demonstração ────────────────────────────────────────
+  const PURGE_PHRASE = 'APAGAR DADOS DE DEMONSTRACAO';
+
+  function resumoPurge(preview) {
+    if (!preview) return null;
+    return {
+      tables: preview.tables || {},
+      rows: preview.rows || 0,
+      qa: preview.qaUsers || [],
+      accounts: preview.accountsWithBalance || 0,
+      wallets: preview.walletsWithBalance || 0,
+    };
+  }
+
+  async function loadPurgePreview() {
+    const box = $('#purge-preview');
+    const list = $('#purge-tables');
+    try {
+      const data = await api('/v1/bank/admin/demo-data');
+      const blocos = [
+        { nome: 'Banco', p: resumoPurge(data.bank || data) },
+        { nome: 'Lojista', p: resumoPurge(data.merchant) },
+      ].filter((bloco) => bloco.p);
+      const linhas = blocos.reduce((total, bloco) => total + bloco.p.rows, 0);
+      const saldos = blocos.reduce((total, bloco) => total + bloco.p.accounts + bloco.p.wallets, 0);
+      const testes = blocos.reduce((total, bloco) => total + bloco.p.qa.length, 0);
+      $('#purge-badge').textContent = String(linhas);
+      if (linhas === 0) {
+        box.textContent = 'Nada de demonstração para apagar: a rede mostra apenas o que foi lançado de verdade.';
+        list.innerHTML = '';
+        $('#purge-run').disabled = true;
+        return;
+      }
+      $('#purge-run').disabled = false;
+      box.textContent = linhas + ' lançamento(s) de vitrine esperam limpeza'
+        + (saldos ? ' · ' + saldos + ' saldo(s) serão zerados' : '')
+        + (testes ? ' · ' + testes + ' usuário(s) de teste saem da rede' : '')
+        + '. As sessões são encerradas no final.';
+      list.innerHTML = blocos.map((bloco) => {
+        const itens = Object.entries(bloco.p.tables).sort((a, b) => b[1] - a[1]).slice(0, 14);
+        if (!itens.length) return '';
+        return '<div><b class="muted">' + esc(bloco.nome) + '</b> '
+          + itens.map(([table, rows]) => '<span class="chip">' + esc(table) + ' · ' + rows + '</span>').join(' ')
+          + '</div>';
+      }).join('');
+    } catch (error) {
+      box.textContent = 'Não foi possível consultar a limpeza: ' + error.message;
+    }
+  }
+
+  $('#purge-run').addEventListener('click', async () => {
+    const phrase = $('#purge-confirm').value.trim();
+    if (phrase !== PURGE_PHRASE) {
+      toast('Digite exatamente ' + PURGE_PHRASE + ' para confirmar.', 'warn');
+      return;
+    }
+    if (!confirm('Apagar os lançamentos de demonstração e zerar todos os saldos? Não há como voltar.')) return;
+    $('#purge-run').disabled = true;
+    $('#purge-run').textContent = 'Apagando…';
+    try {
+      const result = await api('/v1/bank/admin/demo-data/purge', { method: 'POST', body: { confirm: PURGE_PHRASE } });
+      const apagado = [result.bank, result.merchant]
+        .reduce((total, bloco) => total + Object.values((bloco && bloco.deleted) || {}).reduce((s, n) => s + n, 0), 0);
+      showAuth();
+      $('#auth-feedback').hidden = true;
+      toast('Limpeza concluída: ' + apagado + ' lançamento(s) apagados. Entre de novo para ver a rede zerada.', 'warn');
+    } catch (error) {
+      toast(error.message, 'err');
+      $('#purge-run').disabled = false;
+    } finally {
+      $('#purge-run').textContent = 'Apagar dados de demonstração';
+      $('#purge-confirm').value = '';
     }
   });
 

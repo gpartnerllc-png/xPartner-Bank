@@ -64,9 +64,9 @@ Autorização      Ledger ACID         Pix (BR Code)
 - **RSFN / PAG0004**: XML no namespace `bcb.gov.br` com `NumCtrlIF` de 26 caracteres, parser fechado (sem DTD, entidades ou atributos), validação de CPF/CNPJ por módulo 11, XSD publicado, hash SHA-256 do XML, débito/crédito atômicos com a câmara de compensação, estorno automático na recusa e retorno simulado apenas em demo. Sem ISPB, ICP-Brasil e conector mTLS homologado, nenhum XML sai do processo.
 - **Transferência real entre contas do banco**: débito e crédito atômicos, duas partidas no razão com saldo após cada lançamento, E2E ID, chave de idempotência com hash da requisição, limites por operação e diário, comprovante com hash de integridade e extrato CSV. Sem PSP, o dinheiro circula apenas dentro do xPartner Bank — e isso está declarado em toda a interface.
 - **Crédito próprio**: antecipação de recebível em 30 dias e empréstimo pessoal de 1 a 12 meses, taxa por faixa de score congelada no contrato, limite derivado de saldo e movimentação, desembolso atômico da tesouraria, agenda Price, pagamento de parcela, liquidação antecipada com desconto de juros futuros, idempotência e exportação CSV. Sem SCR/BACEN nem mora — declarado na API e na interface.
-- **PDV com NFC-e síncrona**: venda presencial demo autorizada pelo adquirente simulado, emissão imediata da NFC-e, crédito do líquido na conta pela tesouraria, XML/DANFE/ESC-POS e CSV. Em produção, a liquidação pertence ao arranjo de pagamento, não à tesouraria.
-- **Capital demo e carteira internacional**: aporte de capital lastreado por uma conta de contraparte no ledger em BRL (canal `CAPITAL`) e **carteira USD** com livro próprio de dupla entrada, tesouraria USD, extrato e aporte idempotente. Valores de laboratório, claramente rotulados: **não há câmbio, remessa internacional nem conta no exterior**.
-- **Saldo de demonstração por CLI**: `npm run demo:balance` leva um titular a um saldo-alvo em BRL e USD creditando apenas a diferença, sem debitar, com ledger balanceado ao final.
+- **PDV com NFC-e síncrona**: venda presencial autorizada pelo adquirente simulado, emissão imediata da NFC-e, crédito do líquido na conta pela tesouraria, XML/DANFE/ESC-POS e CSV. Em produção, a liquidação pertence ao arranjo de pagamento, não à tesouraria.
+- **Aporte de capital e carteira internacional**: aporte lastreado por uma conta de contraparte no ledger em BRL (canal `CAPITAL`) e **carteira USD** com livro próprio de dupla entrada, tesouraria USD, extrato e aporte idempotente. **Nada de saldo inventado**: tesouraria, conta de capital e tesouraria USD abrem com R$ 0,00 / US$ 0,00 e o aporte só sai de onde existe dinheiro de verdade — sem lastro, a rede recusa com `TREASURY_EMPTY` / `CAPITAL_EMPTY`. **Não há câmbio, remessa internacional nem conta no exterior**.
+- **Fatos reais por padrão**: `SEED_DEMO` está desligado, então nenhuma venda, cobrança, token ou Open Finance de vitrine nasce com o servidor. `npm run purge:demo` apaga o que a demonstração criou, remove os usuários de teste (`@xpartner.test`), zera todos os saldos e grava backup + auditoria antes de escrever; a estrutura (titulares, contas, lojistas, terminais, trilha de auditoria) permanece.
 - **Edge Cloudflare**: Worker com D1, KV, R2, Queues e Workers AI espelhando `/v1/bank/*`; o saldo é protegido por trigger atômico no D1. **Publicado em produção** em `https://xpartner-bank-edge.contatodroppfy.workers.dev` (D1, KV, R2 e filas provisionados na conta).
 - **Checkout mTLS**: listener HTTPS mutual-TLS para maquininhas, com CA própria, CN = serial do terminal, fingerprint SHA-256 pinado e autorização pelo mesmo pipeline de venda. Sem certificado, o handshake é derrubado; CN desconhecido recebe 401 e fingerprint divergente recebe 403.
 
@@ -79,7 +79,7 @@ npm ci
 npm run dev
 ```
 
-Abra <http://localhost:8080>. O modo demo cria o estabelecimento *Padaria Pão de Ouro*, dois terminais e vendas históricas automaticamente.
+Abra <http://localhost:8080>. A primeira subida cria apenas a estrutura — o estabelecimento *Padaria Pão de Ouro*, dois terminais e os adquirentes com suas taxas. **Nenhuma venda, cobrança, token ou saldo nasce automaticamente**: com `SEED_DEMO` desligado (padrão), a rede começa zerada e só aparece o que foi lançado de verdade.
 
 - Dashboard: `GET /`
 - Conta digital: `GET /bank`
@@ -92,7 +92,7 @@ Abra <http://localhost:8080>. O modo demo cria o estabelecimento *Padaria Pão d
 - OpenAPI: `GET /openapi.json`
 - Token demo: `POST /v1/auth/demo` (ou `GET /v1/demo/bootstrap`)
 
-### Exemplo de venda (demo)
+### Exemplo de venda (simulador da maquininha)
 
 ```bash
 TOKEN=$(curl -s -X POST localhost:8080/v1/auth/demo | node -pe "JSON.parse(require('fs').readFileSync(0)).token")
@@ -104,6 +104,8 @@ curl -s -X POST localhost:8080/v1/demo/sales \
 ```
 
 A resposta traz autorização, adquirente roteada, taxa, líquido, risco e status fiscal. A NFC-e é emitida em segundo plano pelo worker e aparece em `GET /v1/fiscal/recent`.
+
+Nada disso é automático: sem rodar o comando, nenhuma venda existe. O simulador escreve um lançamento real no razão — é o caminho para testar de ponta a ponta sem maquininha, não uma vitrine de números inventados.
 
 ### Checkout mTLS (opcional)
 
@@ -133,11 +135,12 @@ O `docker-compose.yml` sobe em modo produção (demo desligado, volume persisten
 |---|---|
 | `npm run dev` | API + dashboard com watch |
 | `npm start` | API + dashboard |
-| `npm test` | 100 testes (domínio, segurança, config, cobranças, Open Finance, investimentos, tokenização, Web3/DVP/agro/ZK/4337, Aladdin/Groth16/CCIP/intents, conta digital, crédito/PDV, capital demo/carteira USD, Pix/chaves, RSFN/PAG0004, mTLS, prontidão e E2E) |
+| `npm test` | 105 testes (domínio, segurança, config, cobranças, Open Finance, investimentos, tokenização, Web3/DVP/agro/ZK/4337, Aladdin/Groth16/CCIP/intents, conta digital, crédito/PDV, capital/carteira USD, Pix/chaves, RSFN/PAG0004, mTLS, limpeza de demonstração, prontidão e E2E) |
 | `npm run typecheck` | TypeScript strict, sem emitir |
 | `npm run check` | Typecheck + suíte completa |
-| `npm run demo:balance -- --document CPF --brl 2000000000 --usd 3000000000` | Leva o titular ao saldo-alvo demo em BRL e USD, creditando só a diferença |
-| `cd cloudflare && npm test` | 12 testes do edge (schema, trigger atômico, idempotência e segurança) |
+| `npm run purge:demo -- --dry-run` | Mostra exatamente o que a demonstração deixou para trás, sem escrever nada |
+| `npm run purge:demo -- --confirm "APAGAR DADOS DE DEMONSTRACAO"` | Apaga os lançamentos de vitrine, remove os usuários `@xpartner.test`, zera saldos e carteiras; grava backup em `.data/backups` e auditoria antes de qualquer escrita |
+| `cd cloudflare && npm test` | 32 testes do edge (schema, trigger atômico, idempotência, ordem das chaves estrangeiras da limpeza e segurança) |
 | `cd cloudflare && npm run dev` | Worker local em `http://localhost:8787` |
 
 ## API principal
@@ -234,15 +237,17 @@ Rotas `/v1/demo/*` existem apenas com `DEMO_MODE=true`. A superfície completa d
 | `POST` | `/v1/bank/credit/contracts/:id/installments/:number/pay` | Paga uma parcela |
 | `POST` | `/v1/bank/credit/contracts/:id/settle` | Liquida antecipadamente com desconto de juros futuros |
 | `GET/POST` | `/v1/bank/pdv/sales` · `/:id/fiscal` · `/:id/xml` · `.csv` | Venda demo com NFC-e síncrona, documentos e exportação |
-| `POST` | `/v1/bank/demo/credit` | Aporte de tesouraria (somente demo) |
-| `POST` | `/v1/bank/demo/capital` | Aporte de capital demo em BRL lastreado pela conta de capital (admin, demo, idempotente) |
+| `POST` | `/v1/bank/demo/credit` | Aporte de tesouraria para o titular (admin, idempotente); exige saldo real na tesouraria |
+| `POST` | `/v1/bank/demo/capital` | Aporte de capital em BRL lastreado pela conta de capital (admin, idempotente); sem lastro, recusa com `CAPITAL_EMPTY` |
 | `GET` | `/v1/bank/fx/wallets` | Carteiras internacionais do titular com saldo e livro próprios |
 | `GET` | `/v1/bank/fx/wallets/:currency/statement` | Extrato da carteira USD com saldo após cada lançamento |
-| `POST` | `/v1/bank/demo/fx` | Aporte internacional demo em USD a partir da tesouraria USD (admin, demo) |
+| `POST` | `/v1/bank/demo/fx` | Aporte em USD a partir da tesouraria USD (admin); tesouraria zerada devolve `TREASURY_EMPTY` |
 | `GET` | `/v1/bank/admin/overview` | KPIs, pendências e auditoria |
 | `GET` | `/v1/bank/admin/users` · `/users/:id` | Lista, detalhe e exclusão lógica (saldo zero) |
 | `POST` | `/v1/bank/admin/users/:id/approve\|reject\|block\|unblock\|reset-password` | Ciclo de vida do cliente |
 | `GET` | `/v1/bank/admin/audit` | Trilha de auditoria |
+| `GET` | `/v1/bank/admin/demo-data` | Prévia da limpeza: quantas linhas de vitrine existem, em quais tabelas, quais saldos serão zerados e quais usuários de teste saem da rede |
+| `POST` | `/v1/bank/admin/demo-data/purge` | Executa a limpeza com a frase de confirmação; grava backup + auditoria e encerra as sessões |
 
 Interface em `/bank` (abas Pix e Crédito), console operacional em `/core` com crédito e PDV, documentação em [docs/BANCO.md](docs/BANCO.md), [docs/PIX.md](docs/PIX.md) e [docs/CREDITO.md](docs/CREDITO.md).
 
@@ -266,15 +271,15 @@ Sem partidas dobradas e sem conector real: a mensagem é contabilizada, mas o en
 src/
   kernel/      config, db, dinheiro, crypto, bus/outbox, âncoras, métricas, log
   domain/      ledger, risco, roteamento, autorização, Pix, fiscal, liquidação, boleto, documentos, overview, vault, zk, web3, aladdin (Monte Carlo/score/intents), rsfn
-  modules/     transações, Pix, workers, notificações, seed, cobranças, assinaturas, extrato, open finance, investimentos, tokenização, web3 (DVP, agro, ZK, 4337, paymaster, redes), aladdin (risco, Groth16, crédito), crosschain (CCIP, intents, liquidez), banco (conta, auth, transferências, chaves Pix, crédito, PDV/NFC-e, capital demo e carteira USD), rsfn
+  modules/     transações, Pix, workers, notificações, seed, limpeza de demonstração, cobranças, assinaturas, extrato, open finance, investimentos, tokenização, web3 (DVP, agro, ZK, 4337, paymaster, redes), aladdin (risco, Groth16, crédito), crosschain (CCIP, intents, liquidez), banco (conta, auth, transferências, chaves Pix, crédito, PDV/NFC-e, capital e carteira USD), rsfn
   api/         Fastify, autenticação de dispositivo/token, rotas de tokenização, web3, aladdin/CCIP/intents, cobranças e banco, mTLS, rate limit
 circuits/      circuito Circom NetWorthProof + wasm/zkey/verification_key (Groth16/BN254)
 public/        dashboards e aplicativo single-file (index, tokenization, app, bank, core e checkout)
 cloudflare/    Worker edge: D1, KV, R2, Queues, Workers AI, migração e testes
 contracts/     Solidity de referência (ADLA, bio-royalty, DePIN, governança, Merkle/anchor, token regulado, DVP, agro, paymaster, ZK, appchain, agentes, Aladdin/Groth16, intents/CCIP)
 proto/         contrato gRPC de referência da conta digital
-tests/         unitários + E2E + API de tokenização + Web3 + Aladdin/Groth16/CCIP + conta digital + crédito/PDV + capital/carteira USD + Pix + mTLS
-db/            schema PostgreSQL de referência, ledger unificado (ledger_core), RSFN (bank_rsfn_messages), Pix (bank_pix_keys), crédito/PDV (bank_credit_contracts, bank_credit_installments, bank_pdv_sales), câmbio demo (bank_fx_*) e XSD PAG0004
+tests/         unitários + E2E + API de tokenização + Web3 + Aladdin/Groth16/CCIP + conta digital + crédito/PDV + capital/carteira USD + Pix + limpeza de demonstração + mTLS
+db/            schema PostgreSQL de referência, ledger unificado (ledger_core), RSFN (bank_rsfn_messages), Pix (bank_pix_keys), crédito/PDV (bank_credit_contracts, bank_credit_installments, bank_pdv_sales), carteira em moeda estrangeira (bank_fx_*) e XSD PAG0004
 deploy/        manifestos Kubernetes
 docs/          arquitetura, segurança, banco, crédito, Pix, RSFN, Cloudflare, mTLS, stack, tokenização, Web3 e guia HSM do agente
 ```
