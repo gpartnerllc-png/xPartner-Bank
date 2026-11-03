@@ -55,6 +55,10 @@
   "ai": {
     "binding": "AI"
   },
+  "durable_objects": {
+    "bindings": [{ "name": "MERCHANT", "class_name": "MerchantCore" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MerchantCore"] }],
   "assets": {
     "directory": "../public",
     "binding": "ASSETS"

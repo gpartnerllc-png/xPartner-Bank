@@ -12,6 +12,7 @@ export interface Env {
   BOOTSTRAP_TOKEN?: string;
   SESSION_PEPPER?: string;
   RSFN_ISPB?: string;
+  MERCHANT: DurableObjectNamespace;
 }
 
 export interface BankEvent {

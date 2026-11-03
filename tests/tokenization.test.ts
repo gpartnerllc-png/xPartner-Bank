@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { closeDb, migrate, openDb } from '../src/kernel/db.ts';
+import { closeDb, migrate } from '../src/kernel/db.ts';
+import { openDb } from '../src/kernel/db-node.ts';
 import { trialBalance } from '../src/domain/ledger.ts';
 import { verifyAnchorChain } from '../src/kernel/anchor.ts';
 import { TokenizationHub } from '../src/modules/tokenization.ts';

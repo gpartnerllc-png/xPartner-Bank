@@ -9,7 +9,8 @@
  * é no-op. Não reduz saldo e não funciona fora do modo demo.
  */
 import { loadConfig } from '../src/config.ts';
-import { closeDb, migrate, openDb } from '../src/kernel/db.ts';
+import { closeDb, migrate } from '../src/kernel/db.ts';
+import { openDb } from '../src/kernel/db-node.ts';
 import { ledgerTrialBalance, BankService, ensureCapital, ensureTreasury } from '../src/modules/bank.ts';
 import { BankFxService, ensureFxTreasury, formatFx } from '../src/modules/bank-fx.ts';
 import { formatBRL, parseBRLToCents } from '../src/kernel/money.ts';

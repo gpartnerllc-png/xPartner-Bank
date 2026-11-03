@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { closeDb, migrate, nowIso, openDb } from '../src/kernel/db.ts';
+import { closeDb, migrate, nowIso } from '../src/kernel/db.ts';
+import { openDb } from '../src/kernel/db-node.ts';
 import type { Db } from '../src/kernel/db.ts';
 import { postGroup } from '../src/domain/ledger.ts';
 import { trialBalance } from '../src/domain/ledger.ts';

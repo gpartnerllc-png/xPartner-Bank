@@ -65,6 +65,7 @@ import { openapi } from './openapi.ts';
 import { clearSessionCookie, nowIso, rateLimit, sessionCookie } from './security.ts';
 import type { RegisterInput } from './auth.ts';
 import * as web3 from './web3-service.ts';
+import { MerchantCore } from './merchant/core.ts';
 
 const VERSION = '1.2.0-edge';
 
@@ -1018,6 +1019,37 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
     );
   }
 
+  // Canal de tempo real do painel: valida a sessão do lojista no Durable Object
+  // antes de aceitar o upgrade. Os eventos de venda entram por aqui quando o
+  // runtime entrega o WebSocket.
+  if (path === '/ws' && (request.headers.get('upgrade') ?? '').toLowerCase() === 'websocket') {
+    const token = withQuery(url, 'token');
+    if (!token) throw new HttpError(401, 'UNAUTHORIZED', 'Token ausente para o canal de tempo real.');
+    const merchant = env.MERCHANT.get(env.MERCHANT.idFromName('demo'));
+    const check = await merchant.fetch(
+      new Request('https://merchant.internal/v1/app/overview', {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+    if (check.status !== 200) throw new HttpError(401, 'UNAUTHORIZED', 'Sessão inválida para o canal de tempo real.');
+    const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
+    server.accept();
+    server.send(JSON.stringify({ type: 'hello', data: { at: nowIso() } }));
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Núcleo do lojista: o app demo e as visões de Operação, Relacionamento,
+  // Financeiro e Banco aberto rodam num Durable Object com SQLite próprio.
+  if (path.startsWith('/v1/') && !path.startsWith('/v1/bank/') && !path.startsWith('/v1/web3/')) {
+    const merchant = env.MERCHANT.get(env.MERCHANT.idFromName('demo'));
+    try {
+      return await merchant.fetch(request);
+    } catch (error) {
+      console.error('merchant.unavailable', error instanceof Error ? error.message : String(error));
+      throw new HttpError(503, 'MERCHANT_UNAVAILABLE', 'Núcleo do lojista indisponível. Tente novamente.');
+    }
+  }
+
   // Páginas estáticas do app (public/ servido via Assets). Rotas /v1/* e
   // /health continuam caindo no 404 JSON abaixo.
   if ((method === 'GET' || method === 'HEAD') && env.ASSETS && !path.startsWith('/v1/') && path !== '/health') {
@@ -1069,4 +1101,4 @@ export default {
 };
 
 // Reexports de leitura para testes/consumidores externos.
-export { createSession, boolEnv };
+export { createSession, boolEnv, MerchantCore };

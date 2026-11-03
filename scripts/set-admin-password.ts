@@ -1,4 +1,5 @@
-import { openDb, migrate } from '../src/kernel/db.ts';
+import { migrate } from '../src/kernel/db.ts';
+import { openDb } from '../src/kernel/db-node.ts';
 import { hashPassword } from '../src/modules/bank-auth.ts';
 
 const email = (process.env.BANK_ADMIN_EMAIL ?? 'bank@droppfy.com').trim().toLowerCase();

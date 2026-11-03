@@ -1,6 +1,7 @@
 import { loadConfig } from '../src/config.ts';
 import type { AppConfig } from '../src/config.ts';
-import { migrate, openDb } from '../src/kernel/db.ts';
+import { migrate } from '../src/kernel/db.ts';
+import { openDb } from '../src/kernel/db-node.ts';
 import type { Db } from '../src/kernel/db.ts';
 import { seedCore } from '../src/modules/seed.ts';
 

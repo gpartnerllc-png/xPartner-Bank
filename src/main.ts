@@ -1,5 +1,6 @@
 import { loadConfig } from './config.ts';
-import { closeDb, migrate, openDb } from './kernel/db.ts';
+import { closeDb, migrate } from './kernel/db.ts';
+import { openDb } from './kernel/db-node.ts';
 import { MemoryEventBus, OutboxRelay } from './kernel/bus.ts';
 import { log } from './kernel/logger.ts';
 import { metrics } from './kernel/metrics.ts';

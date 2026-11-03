@@ -1,8 +1,18 @@
-import { mkdirSync } from 'node:fs';
-import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+/**
+ * Contrato mínimo de banco usado pelo domínio. O núcleo local usa `node:sqlite`;
+ * o edge usa a mesma superfície sobre o SQLite de um Durable Object.
+ */
+export interface DbStatement {
+  run(...params: any[]): { changes: number | bigint; lastInsertRowid: number | bigint };
+  get(...params: any[]): any;
+  all(...params: any[]): any[];
+}
 
-export type Db = DatabaseSync;
+export interface Db {
+  prepare(sql: string): DbStatement;
+  exec(sql: string): void;
+  close(): void;
+}
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS merchants (
@@ -1244,18 +1254,6 @@ CREATE INDEX IF NOT EXISTS idx_ccip_messages_lane
   ON ccip_messages(lane_id, sequence DESC);
 `;
 
-export function openDb(dbPath: string): Db {
-  if (dbPath !== ':memory:') {
-    mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
-  }
-  const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA journal_mode = WAL;');
-  db.exec('PRAGMA foreign_keys = ON;');
-  db.exec('PRAGMA busy_timeout = 5000;');
-  db.exec('PRAGMA synchronous = NORMAL;');
-  return db;
-}
-
 export function migrate(db: Db): void {
   const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined;
   const version = row?.user_version ?? 0;
@@ -1283,7 +1281,7 @@ export function migrate(db: Db): void {
 
 export function closeDb(db: Db): void {
   try {
-    db.close();
+    db.close?.();
   } catch {
     // conexão já encerrada
   }
