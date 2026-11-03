@@ -23,6 +23,8 @@ import type { SettlementWorker } from '../modules/settlement-worker.ts';
 import type { NotificationHub } from '../modules/notifications.ts';
 import type { TokenizationHub } from '../modules/tokenization.ts';
 import type { Web3Hub } from '../modules/web3.ts';
+import type { AladdinEngine } from '../modules/aladdin.ts';
+import type { CrossChainHub } from '../modules/crosschain.ts';
 import type { CustomerService } from '../modules/customers.ts';
 import type { BillingService } from '../modules/billing.ts';
 import type { SubscriptionService } from '../modules/subscriptions.ts';
@@ -39,6 +41,7 @@ import { clearSessionCookie, sessionCookie } from '../modules/bank-auth.ts';
 import { buildReadiness } from '../modules/readiness.ts';
 import { registerTokenizationRoutes } from './tokenization-routes.ts';
 import { registerWeb3Routes } from './web3-routes.ts';
+import { registerAladdinRoutes } from './aladdin-routes.ts';
 import { DEMO_MERCHANT_ID, DEMO_TERMINAL_ID } from '../modules/seed.ts';
 import {
   assertMerchantScope,
@@ -61,6 +64,8 @@ export interface AppContext {
   hub: NotificationHub;
   tokenization: TokenizationHub;
   web3: Web3Hub;
+  aladdin: AladdinEngine;
+  crosschain: CrossChainHub;
   customers: CustomerService;
   billing: BillingService;
   subscriptions: SubscriptionService;
@@ -732,6 +737,24 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/web3/paymaster/budgets': { get: { summary: 'Orçamentos de patrocínio de gas' }, post: { summary: 'Cria orçamento de paymaster com teto por UserOp' } },
       '/v1/web3/paymaster/ops': { get: { summary: 'UserOps patrocinadas' } },
       '/v1/web3/paymaster/sponsor': { post: { summary: 'Patrocina UserOp com anti-replay por hash' } },
+      '/v1/web3/aladdin/overview': { get: { summary: 'Risco, provas Groth16, empréstimos algorítmicos e política' } },
+      '/v1/web3/aladdin/risk/metrics': { get: { summary: 'Histórico de métricas de risco do titular' }, post: { summary: 'Injeta métricas de risco assinadas por operador/oráculo' } },
+      '/v1/web3/aladdin/risk/simulate': { post: { summary: 'Monte Carlo determinístico de VaR, volatilidade e score' } },
+      '/v1/web3/aladdin/zk/prove': { post: { summary: 'Gera prova Groth16 de patrimônio (demo/client SDK)' } },
+      '/v1/web3/aladdin/zk/proofs': { get: { summary: 'Provas Groth16 registradas' }, post: { summary: 'Verifica e registra prova Groth16 com anti-replay' } },
+      '/v1/web3/aladdin/loans': { get: { summary: 'Empréstimos algorítmicos do titular' }, post: { summary: 'Abre crédito com score, VaR e prova ZK' } },
+      '/v1/web3/aladdin/loans/{id}': { get: { summary: 'Detalhe do empréstimo algorítmico' } },
+      '/v1/web3/aladdin/loans/{id}/repay': { post: { summary: 'Amortiza ou quita o empréstimo algorítmico' } },
+      '/v1/web3/ccip/lanes': { get: { summary: 'Lanes CCIP source→dest' }, post: { summary: 'Registra lane CCIP com router, receiver e seletores' } },
+      '/v1/web3/ccip/liquidity': { get: { summary: 'Liquidez P2P por lane e ativo' }, post: { summary: 'Anuncia liquidez de solver no destino' } },
+      '/v1/web3/ccip/messages': { get: { summary: 'Mensagens CCIP emitidas e liquidadas' } },
+      '/v1/web3/intents': { get: { summary: 'Intents cross-chain do titular' }, post: { summary: 'Abre intent com escrow, mínimo e prazo' } },
+      '/v1/web3/intents/overview': { get: { summary: 'KPIs de intents, liquidez e entrega' } },
+      '/v1/web3/intents/{id}': { get: { summary: 'Intent com cotações e mensagem CCIP' } },
+      '/v1/web3/intents/{id}/quotes': { post: { summary: 'Registra cotação de solver com score de IA' } },
+      '/v1/web3/intents/{id}/select': { post: { summary: 'Seleciona a melhor cotação por score auditável' } },
+      '/v1/web3/intents/{id}/execute': { post: { summary: 'Liquida intent, move escrow e emite mensagem CCIP' } },
+      '/v1/web3/intents/{id}/cancel': { post: { summary: 'Cancela intent e devolve o escrow' } },
       '/v1/bank/status': { get: { summary: 'Estado público do cadastro e do bootstrap do banco' } },
       '/v1/readiness': { get: { summary: 'Diagnóstico do que falta para operar com dinheiro real' } },
       '/v1/bank/auth/register': { post: { summary: 'Cadastro com CPF/CNPJ validado e aprovação do administrador' } },
@@ -2225,6 +2248,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   // ── Tokenização, Web3 e agentes ───────────────────────────────────────────
   registerTokenizationRoutes(app, ctx.tokenization, { requireRead, requireWrite, assertDemo });
   registerWeb3Routes(app, ctx.web3, { requireRead, requireWrite });
+  registerAladdinRoutes(app, ctx.aladdin, ctx.crosschain, { requireRead, requireWrite });
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   let dashboardHtml: string | undefined;

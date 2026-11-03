@@ -6,6 +6,8 @@ import { SettlementWorker } from '../src/modules/settlement-worker.ts';
 import { NotificationHub } from '../src/modules/notifications.ts';
 import { TokenizationHub } from '../src/modules/tokenization.ts';
 import { Web3Hub } from '../src/modules/web3.ts';
+import { AladdinEngine } from '../src/modules/aladdin.ts';
+import { CrossChainHub } from '../src/modules/crosschain.ts';
 import { CustomerService } from '../src/modules/customers.ts';
 import { BillingService } from '../src/modules/billing.ts';
 import { SubscriptionService } from '../src/modules/subscriptions.ts';
@@ -39,6 +41,8 @@ export async function buildTestServer() {
   const hub = new NotificationHub(config);
   const tokenization = new TokenizationHub(db);
   const web3 = new Web3Hub(db);
+  const aladdin = new AladdinEngine(db);
+  const crosschain = new CrossChainHub(db);
   const customers = new CustomerService(db);
   const billing = new BillingService(db, transactions, pix, customers);
   const subscriptions = new SubscriptionService(db, billing, pix, customers);
@@ -63,6 +67,8 @@ export async function buildTestServer() {
     hub,
     tokenization,
     web3,
+    aladdin,
+    crosschain,
     customers,
     billing,
     subscriptions,
@@ -92,6 +98,8 @@ export async function buildTestServer() {
     hub,
     tokenization,
     web3,
+    aladdin,
+    crosschain,
     customers,
     billing,
     subscriptions,

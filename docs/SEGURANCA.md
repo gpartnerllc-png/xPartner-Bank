@@ -124,7 +124,7 @@ CSP do dashboard permite `inline` scripts/estilos porque a UI é single-file; em
 - **Admissão obrigatória.** PENDING ou REVOKED não paga royalty (`BIO_NOT_ADMITTED`); a aprovação é uma proposta DAO com quórum e maioria, ancorada.
 - **Royalty limitado.** Teto de 30% (3000 bps) definido em validação e schema, sem promessa de renda.
 - **Agentes sem execução.** A avaliação devolve `APPROVE`, `REVIEW` ou `BLOCK`; não existe chamada que mova dinheiro a partir dessa decisão sem um fluxo humano/operacional.
-- **Provas honestas.** Credenciais usam compromisso com salt não persistido e Merkle de inclusão seletiva; não há claim de zk-SNARK.
+- **Provas honestas.** Credenciais usam compromisso com salt não persistido e Merkle de inclusão seletiva; o motor Aladdin acrescenta **Groth16/BN254 real** para `patrimônio ≥ limiar`, com verificador gerado e cerimônia de demonstração. Nenhum dos dois caminhos prova identidade ou KYC.
 - **Contratos.** `contracts/` é referência sem toolchain, auditoria ou deploy; não trate como código de produção.
 - **Escopo regulatório.** Token lastreado, royalty e ponte não constituem oferta pública; operar exige validação jurídica e autorização aplicável.
 
@@ -190,7 +190,7 @@ Limites padrão da conta: R$ 50.000,00 por transferência e R$ 100.000,00 por di
 - [ ] Mover chaves mTLS para HSM/KMS, configurar CRL/OCSP e rotação da CA antes de emitir certificados em escala.
 - [ ] Configurar alerta para `bank_audit` (múltiplos resets, aprovações em lote, exclusões) e revisão periódica de acessos admin.
 - [ ] Integrar transferência externa somente com PSP/SPI autorizado, mantendo o ledger interno como trilha de conciliação.
-- [ ] Implementar zk-SNARK auditado antes de comunicar privacidade forte; manter Merkle rotulado como inclusão seletiva.
+- [ ] Auditar o circuito Groth16 (`NetWorthProof`), realizar cerimônia multi-participante e mover a chave de assinatura do oráculo de risco para HSM/KMS; manter Merkle rotulado como inclusão seletiva.
 - [ ] Revisar base legal, retenção e revogação de consentimento dos bioativos com o DPO.
 - [ ] Definir plano de continuidade, RTO/RPO e testes de caos.
 - [ ] Formalizar licenças e contratos: Banco Central, bandeiras, adquirente/PSP.

@@ -69,12 +69,15 @@ Detalhes em [docs/CLOUDFLARE.md](CLOUDFLARE.md).
 
 | Item pedido | Estatuto | Onde |
 |---|---|---|
-| Contratos Solidity (ADLA, bio-royalty, governança, Merkle) | **Referência** | `contracts/*.sol` — não compilados nem implantados |
+| Contratos Solidity (ADLA, bio-royalty, governança, Merkle, DVP, agro, Aladdin, intents/CCIP) | **Referência** | `contracts/*.sol` — não compilados nem implantados |
 | PoPW / DePIN EVM | **Referência** | `contracts/DePINRegistry.sol` + recompensa contábil real no ledger |
 | RWA e emissão lastreada | **Roda** (dentro do banco) | `src/modules/tokenization.ts` e ledger |
 | NFT dinâmico / bioativos | **Roda** (metadados e royalty) | tokenização + consentimento por hash |
-| Oráculos neurais | **Roadmap** | não há oráculo on-chain operando |
-| Provas de credencial / ZK | **Emulado** | compromisso SHA-256 + inclusão Merkle, rotulado |
+| Oráculos neurais | **Roadmap** | preço on-chain é referência; não há oráculo neural operando |
+| Prova de credencial / Merkle | **Emulado** | compromisso SHA-256 + inclusão Merkle, rotulado |
+| zk-SNARK de patrimônio (Groth16/BN254) | **Roda** (circuito de demonstração) | `circuits/`, `src/modules/zk-snark.ts`, verificador gerado; cerimônia de demo |
+| Motor Aladdin / crédito com IA | **Roda** | Monte Carlo determinístico, score, VaR, teto e empréstimo no ledger |
+| CCIP / intents / liquidez P2P | **Emulado no ledger** | `CrossChainHub`; sem router CCIP ao vivo |
 | Pontes PIX/Lightning/Drex/TCA | **Emulado** | cotação e liquidação interna declaradas demo |
 | TEE / atestação de hardware | **Roadmap** | contrato prevê atestação; não há enclave |
 | Agentes autônomos 24/7 sem filtro | **Não implementado por decisão** | ver abaixo |
@@ -87,7 +90,7 @@ Detalhes em [docs/CLOUDFLARE.md](CLOUDFLARE.md).
 | Item | Estatuto |
 |---|---|
 | Workers AI para leitura de perfil | **Roda** (edge, com fallback heurístico) |
-| IA para crédito e risco (XGBoost/PyTorch) | **Roadmap** |
+| IA para crédito e risco (XGBoost/PyTorch) | **Roadmap** (o motor atual é Monte Carlo determinístico + score auditável) |
 | Orquestração local (Ollama/LM Studio) | **Roadmap** |
 | Modelos generativos no atendimento | **Roadmap** |
 

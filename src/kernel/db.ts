@@ -1097,6 +1097,153 @@ CREATE INDEX IF NOT EXISTS idx_web3_paymaster_ops_budget
   ON web3_paymaster_ops(budget_id, created_at DESC);
 `;
 
+/**
+ * Camada Aladdin: métricas de risco injetadas por IA, provas Groth16 verificadas,
+ * crédito algorítmico e tokenização cross-chain por intents com liquidez P2P e CCIP.
+ * Aditiva: não altera tabelas anteriores.
+ */
+const SCHEMA_V11 = `
+CREATE TABLE IF NOT EXISTS zk_snark_proofs (
+  id TEXT PRIMARY KEY,
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  circuit TEXT NOT NULL,
+  commitment TEXT NOT NULL,
+  threshold_cents INTEGER NOT NULL CHECK (threshold_cents > 0),
+  proof_hash TEXT NOT NULL UNIQUE,
+  public_signals TEXT NOT NULL,
+  proof_json TEXT NOT NULL,
+  verified INTEGER NOT NULL CHECK (verified IN (0,1)),
+  verifier TEXT NOT NULL,
+  consumed_by TEXT,
+  created_at TEXT NOT NULL,
+  verified_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_zk_snark_proofs_merchant
+  ON zk_snark_proofs(merchant_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS aladdin_risk_metrics (
+  id TEXT PRIMARY KEY,
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  var_bps INTEGER NOT NULL CHECK (var_bps BETWEEN 0 AND 10000),
+  volatility_bps INTEGER NOT NULL CHECK (volatility_bps BETWEEN 0 AND 100000),
+  credit_score INTEGER NOT NULL CHECK (credit_score BETWEEN 0 AND 10000),
+  model TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('MONTE_CARLO','ORACLE_FUSION','OPERATOR')),
+  sample_size INTEGER NOT NULL DEFAULT 0 CHECK (sample_size >= 0),
+  observed_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  digest TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aladdin_risk_metrics_merchant
+  ON aladdin_risk_metrics(merchant_id, observed_at DESC);
+
+CREATE TABLE IF NOT EXISTS aladdin_loans (
+  id TEXT PRIMARY KEY,
+  borrower_id TEXT NOT NULL REFERENCES merchants(id),
+  principal_cents INTEGER NOT NULL CHECK (principal_cents > 0),
+  outstanding_cents INTEGER NOT NULL CHECK (outstanding_cents >= 0),
+  interest_bps INTEGER NOT NULL CHECK (interest_bps BETWEEN 0 AND 20000),
+  risk_metric_id TEXT NOT NULL REFERENCES aladdin_risk_metrics(id),
+  zk_proof_id TEXT NOT NULL UNIQUE REFERENCES zk_snark_proofs(id),
+  score INTEGER NOT NULL CHECK (score BETWEEN 0 AND 10000),
+  var_bps INTEGER NOT NULL CHECK (var_bps BETWEEN 0 AND 10000),
+  status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','REPAID')),
+  due_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  closed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_aladdin_loans_borrower
+  ON aladdin_loans(borrower_id, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ccip_lanes (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  source_chain_id INTEGER NOT NULL CHECK (source_chain_id > 0),
+  dest_chain_id INTEGER NOT NULL CHECK (dest_chain_id > 0),
+  source_selector TEXT NOT NULL,
+  dest_selector TEXT NOT NULL,
+  router TEXT NOT NULL,
+  receiver TEXT NOT NULL,
+  fee_bps INTEGER NOT NULL DEFAULT 0 CHECK (fee_bps BETWEEN 0 AND 1000),
+  max_units INTEGER NOT NULL CHECK (max_units > 0),
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','PAUSED')),
+  created_at TEXT NOT NULL,
+  UNIQUE (source_chain_id, dest_chain_id)
+);
+
+CREATE TABLE IF NOT EXISTS ccip_liquidity (
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  lane_id TEXT NOT NULL REFERENCES ccip_lanes(id),
+  symbol TEXT NOT NULL,
+  available_units INTEGER NOT NULL CHECK (available_units >= 0),
+  rate_bps INTEGER NOT NULL DEFAULT 0 CHECK (rate_bps BETWEEN 0 AND 2000),
+  risk_tier TEXT NOT NULL DEFAULT 'B' CHECK (risk_tier IN ('A','B','C')),
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','PAUSED')),
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (merchant_id, lane_id, symbol)
+);
+
+CREATE TABLE IF NOT EXISTS crosschain_intents (
+  id TEXT PRIMARY KEY,
+  merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  lane_id TEXT NOT NULL REFERENCES ccip_lanes(id),
+  symbol TEXT NOT NULL,
+  amount_units INTEGER NOT NULL CHECK (amount_units > 0),
+  min_dest_units INTEGER NOT NULL CHECK (min_dest_units > 0),
+  fee_budget_cents INTEGER NOT NULL DEFAULT 0 CHECK (fee_budget_cents >= 0),
+  status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','QUOTED','SETTLED','CANCELLED','EXPIRED')),
+  selected_quote_id TEXT,
+  ai_model TEXT,
+  deadline TEXT NOT NULL,
+  digest TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  settled_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_crosschain_intents_merchant
+  ON crosschain_intents(merchant_id, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS crosschain_quotes (
+  id TEXT PRIMARY KEY,
+  intent_id TEXT NOT NULL REFERENCES crosschain_intents(id),
+  solver_id TEXT NOT NULL,
+  provider_merchant_id TEXT NOT NULL REFERENCES merchants(id),
+  dest_units INTEGER NOT NULL CHECK (dest_units > 0),
+  fee_cents INTEGER NOT NULL CHECK (fee_cents >= 0),
+  eta_seconds INTEGER NOT NULL CHECK (eta_seconds > 0),
+  risk_bps INTEGER NOT NULL CHECK (risk_bps BETWEEN 0 AND 10000),
+  score INTEGER NOT NULL CHECK (score BETWEEN 0 AND 10000),
+  status TEXT NOT NULL DEFAULT 'OFFERED' CHECK (status IN ('OFFERED','SELECTED','REJECTED')),
+  created_at TEXT NOT NULL,
+  UNIQUE (intent_id, solver_id)
+);
+CREATE INDEX IF NOT EXISTS idx_crosschain_quotes_intent
+  ON crosschain_quotes(intent_id, score DESC);
+
+CREATE TABLE IF NOT EXISTS ccip_messages (
+  id TEXT PRIMARY KEY,
+  intent_id TEXT NOT NULL REFERENCES crosschain_intents(id),
+  quote_id TEXT NOT NULL REFERENCES crosschain_quotes(id),
+  lane_id TEXT NOT NULL REFERENCES ccip_lanes(id),
+  message_id TEXT NOT NULL UNIQUE,
+  sequence INTEGER NOT NULL UNIQUE,
+  sender_id TEXT NOT NULL,
+  receiver TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  amount_units INTEGER NOT NULL CHECK (amount_units > 0),
+  dest_units INTEGER NOT NULL CHECK (dest_units > 0),
+  fee_cents INTEGER NOT NULL CHECK (fee_cents >= 0),
+  status TEXT NOT NULL DEFAULT 'SETTLED' CHECK (status IN ('SENT','SETTLED')),
+  digest TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  settled_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ccip_messages_lane
+  ON ccip_messages(lane_id, sequence DESC);
+`;
+
 export function openDb(dbPath: string): Db {
   if (dbPath !== ':memory:') {
     mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
@@ -1112,7 +1259,7 @@ export function openDb(dbPath: string): Db {
 export function migrate(db: Db): void {
   const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined;
   const version = row?.user_version ?? 0;
-  if (version >= 10) return;
+  if (version >= 11) return;
   db.exec('BEGIN IMMEDIATE;');
   try {
     if (version < 1) db.exec(SCHEMA);
@@ -1125,7 +1272,8 @@ export function migrate(db: Db): void {
     if (version < 8) db.exec(SCHEMA_V8);
     if (version < 9) db.exec(SCHEMA_V9);
     if (version < 10) db.exec(SCHEMA_V10);
-    db.exec('PRAGMA user_version = 10;');
+    if (version < 11) db.exec(SCHEMA_V11);
+    db.exec('PRAGMA user_version = 11;');
     db.exec('COMMIT;');
   } catch (error) {
     db.exec('ROLLBACK;');

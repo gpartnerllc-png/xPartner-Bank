@@ -11,6 +11,9 @@ import { NotificationHub } from './modules/notifications.ts';
 import { TokenizationHub } from './modules/tokenization.ts';
 import { Web3Hub } from './modules/web3.ts';
 import { seedWeb3 } from './modules/web3-seed.ts';
+import { AladdinEngine } from './modules/aladdin.ts';
+import { CrossChainHub } from './modules/crosschain.ts';
+import { seedAladdin } from './modules/aladdin-seed.ts';
 import { CustomerService } from './modules/customers.ts';
 import { BillingService } from './modules/billing.ts';
 import { SubscriptionService, SubscriptionWorker } from './modules/subscriptions.ts';
@@ -50,6 +53,8 @@ const settlements = new SettlementWorker(db, config);
 const hub = new NotificationHub(config);
 const tokenization = new TokenizationHub(db);
 const web3 = new Web3Hub(db);
+const aladdin = new AladdinEngine(db);
+const crosschain = new CrossChainHub(db);
 const customers = new CustomerService(db);
 const billing = new BillingService(db, transactions, pix, customers);
 const subscriptions = new SubscriptionService(db, billing, pix, customers);
@@ -76,6 +81,8 @@ const app = await buildApp({
   hub,
   tokenization,
   web3,
+  aladdin,
+  crosschain,
   customers,
   billing,
   subscriptions,
@@ -105,6 +112,7 @@ settlements.start();
 seedDemoData(db, config, transactions, pix);
 seedTokenization(db, tokenization, config);
 seedWeb3(db, web3, config);
+seedAladdin(aladdin, crosschain, config);
 seedBilling(db, config, customers, billing, subscriptions);
 seedOpenFinance(db, config, openfinance);
 seedInvestments(db, config, investments);
