@@ -536,6 +536,11 @@ export class MerchantCore {
       });
     }
 
+    if (method === 'DELETE' && segments.length === 3 && segments[1] === 'customers') {
+      const claims = this.authenticate(request, true);
+      return json(services.customers.archive(claims.merchantId, segments[2]));
+    }
+
     // ── Boletos ────────────────────────────────────────────────────────────
     if (method === 'GET' && path === '/v1/boletos') {
       const claims = this.authenticate(request);

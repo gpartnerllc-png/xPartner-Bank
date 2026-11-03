@@ -155,6 +155,7 @@ O `docker-compose.yml` sobe em modo produção (demo desligado, volume persisten
 | `GET` | `/v1/ledger/trial` | Balancete (débitos = créditos) |
 | `GET` | `/v1/app/overview` | Payload consolidado do aplicativo bancário |
 | `GET/POST` | `/v1/customers` | Cadastro de clientes PF/PJ |
+| `GET/PATCH/DELETE` | `/v1/customers/:id` | Edita, bloqueia ou remove o cliente da base ativa |
 | `GET/POST` | `/v1/boletos` | Lista e emite boletos registrados 077 |
 | `POST` | `/v1/boletos/:reference/pay` | Baixa boleto (demo) |
 | `GET/POST` | `/v1/payment-links` | Lista e cria links Pix/boleto |

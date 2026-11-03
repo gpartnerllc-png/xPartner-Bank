@@ -673,7 +673,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/fiscal/{transactionId}': { get: { summary: 'XML assinado, QR Code e DANFE' } },
       '/v1/demo/sales': { post: { summary: 'Simulador de venda da maquininha (apenas demo)' } },
       '/v1/customers': { get: { summary: 'Lista clientes do estabelecimento' }, post: { summary: 'Cadastra cliente com CPF/CNPJ validado' } },
-      '/v1/customers/{id}': { get: { summary: 'Detalha cliente e boletos recentes' }, patch: { summary: 'Atualiza dados cadastrais do cliente' } },
+      '/v1/customers/{id}': { get: { summary: 'Detalha cliente e boletos recentes' }, patch: { summary: 'Atualiza dados cadastrais ou bloqueia o cliente' }, delete: { summary: 'Remove o cliente da base ativa com histórico fiscal preservado' } },
       '/v1/boletos': { get: { summary: 'Lista boletos com status e vencimento' }, post: { summary: 'Emite boleto 077 com linha digitável válida' } },
       '/v1/boletos/{reference}': { get: { summary: 'Consulta boleto por id, nosso número, código de barras ou linha digitável' } },
       '/v1/boletos/{reference}/pay': { post: { summary: 'Baixa boleto e dispara liquidação e NFC-e (demo)' } },
@@ -1123,6 +1123,12 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       status?: string;
     };
     return { customer: ctx.customers.update(claims.merchantId, id, body) };
+  });
+
+  app.delete('/v1/customers/:id', async (request) => {
+    const claims = requireWrite(request);
+    const { id } = request.params as { id: string };
+    return ctx.customers.archive(claims.merchantId, id);
   });
 
   // ── Boletos ───────────────────────────────────────────────────────────────

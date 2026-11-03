@@ -688,10 +688,10 @@
         </div>
         <div class="grid cols">
           <div class="card">
-            <div class="card-head"><div><h3>Base de clientes</h3><p>Documentos são armazenados normalizados e exibidos mascarados.</p></div></div>
+            <div class="card-head"><div><h3>Base de clientes</h3><p>Documentos são armazenados normalizados e exibidos mascarados. Cada linha tem Editar, Bloquear e Excluir.</p></div></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Contato</th><th>Cidade</th><th>Status</th></tr></thead>
+                <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Contato</th><th>Cidade</th><th>Status</th><th>Ações</th></tr></thead>
                 <tbody id="customersTable"></tbody>
               </table>
             </div>
@@ -1136,12 +1136,54 @@
           '<td>' + esc(c.email || c.phone || '—') + '</td>' +
           '<td>' + esc((c.city || '—') + (c.uf ? '/' + c.uf : '')) + '</td>' +
           '<td>' + chip(c.status) + '</td>' +
+          '<td><div class="row-actions">' +
+            '<button class="btn sm" data-action="customer-edit" data-id="' + esc(c.id) + '">Editar</button>' +
+            (c.status === 'BLOCKED'
+              ? '<button class="btn sm primary" data-action="customer-unblock" data-id="' + esc(c.id) + '">Desbloquear</button>'
+              : '<button class="btn sm" data-action="customer-block" data-id="' + esc(c.id) + '">Bloquear</button>') +
+            '<button class="btn sm danger" data-action="customer-delete" data-id="' + esc(c.id) + '">Excluir</button>' +
+          '</div></td>' +
         '</tr>').join('')
-      : emptyRow(6, 'Nenhum cliente cadastrado', 'Cadastre o primeiro cliente ao lado.');
+      : emptyRow(7, 'Nenhum cliente cadastrado', 'Cadastre o primeiro cliente ao lado.');
   }
 
   async function refreshCustomersCache() {
     try { await loadCustomers(); } catch (error) { console.warn(error); }
+  }
+
+  function findCustomer(id) {
+    return state.customers.find((c) => c.id === id);
+  }
+
+  function openCustomerEdit(customer) {
+    openModal('Editar cliente · ' + customer.name, 'Documento ' + (customer.documentMasked || '') + ' não pode ser alterado.', '' +
+      '<div class="form-grid">' +
+        '<label class="field"><span>Nome / Razão social</span><input id="custEditName" maxlength="80" value="' + esc(customer.name) + '" /></label>' +
+        '<div class="form-grid two">' +
+          '<label class="field"><span>E-mail</span><input id="custEditEmail" type="email" maxlength="120" value="' + esc(customer.email || '') + '" /></label>' +
+          '<label class="field"><span>Telefone</span><input id="custEditPhone" maxlength="20" value="' + esc(customer.phone || '') + '" /></label>' +
+        '</div>' +
+        '<div class="form-grid two">' +
+          '<label class="field"><span>Cidade</span><input id="custEditCity" maxlength="60" value="' + esc(customer.city || '') + '" /></label>' +
+          '<label class="field"><span>UF</span><input id="custEditUf" maxlength="2" value="' + esc(customer.uf || '') + '" /></label>' +
+        '</div>' +
+      '</div>' +
+      '<p class="tiny dim" style="margin:8px 0 0">Deixe um campo em branco para removê-lo do cadastro.</p>' +
+      '<div class="form-foot">' +
+        '<button class="btn primary" data-action="customer-save" data-id="' + esc(customer.id) + '">Salvar alterações</button>' +
+        '<button class="btn" data-close="1">Cancelar</button>' +
+      '</div>');
+  }
+
+  function openCustomerDelete(customer) {
+    openModal('Excluir cliente · ' + customer.name, 'A remoção esconde o cliente da base ativa.', '' +
+      '<p class="tiny" style="margin:0 0 10px">Seus dados de contato (e-mail, telefone, cidade) são apagados no mesmo momento, conforme a LGPD. ' +
+        'Boletos, assinaturas e notas fiscais já emitidos continuam válidos e disponíveis para a contabilidade e para o fisco — ' +
+        'por isso o nome do cliente passa a aparecer como "Cliente removido".</p>' +
+      '<div class="form-foot">' +
+        '<button class="btn danger" data-action="customer-remove" data-id="' + esc(customer.id) + '">Confirmar exclusão</button>' +
+        '<button class="btn" data-close="1">Manter cliente</button>' +
+      '</div>');
   }
 
   // ── Visão geral ────────────────────────────────────────────────────────────
@@ -2032,7 +2074,42 @@
     const { action: name, id, code, txid } = action.dataset;
     action.disabled = true;
     try {
-      if (name === 'boleto-view') {
+      if (name === 'customer-edit') {
+        const customer = findCustomer(id);
+        if (!customer) { toast('Cliente não encontrado', 'err'); } else { openCustomerEdit(customer); }
+      } else if (name === 'customer-save') {
+        const payload = {
+          name: $('#custEditName').value.trim(),
+          email: $('#custEditEmail').value.trim(),
+          phone: $('#custEditPhone').value.trim(),
+          city: $('#custEditCity').value.trim(),
+          uf: $('#custEditUf').value.trim(),
+        };
+        if (payload.name.length < 2) throw new Error('Informe o nome ou a razão social (mínimo 2 caracteres).');
+        await api('/v1/customers/' + encodeURIComponent(id), { method: 'PATCH', payload });
+        toast('Cliente atualizado', 'ok', 'Cadastro salvo com os novos dados.');
+        closeModal();
+        await go(state.route);
+      } else if (name === 'customer-block') {
+        await api('/v1/customers/' + encodeURIComponent(id), { method: 'PATCH', payload: { status: 'BLOCKED' } });
+        toast('Cliente bloqueado', 'warn', 'Novas cobranças ficam retidas até o desbloqueio.');
+        await go(state.route);
+      } else if (name === 'customer-unblock') {
+        await api('/v1/customers/' + encodeURIComponent(id), { method: 'PATCH', payload: { status: 'ACTIVE' } });
+        toast('Cliente desbloqueado', 'ok', 'Cobranças liberadas novamente.');
+        await go(state.route);
+      } else if (name === 'customer-delete') {
+        const customer = findCustomer(id);
+        if (!customer) { toast('Cliente não encontrado', 'err'); } else { openCustomerDelete(customer); }
+      } else if (name === 'customer-remove') {
+        const result = await api('/v1/customers/' + encodeURIComponent(id), { method: 'DELETE' });
+        const kept = result.preserved || {};
+        toast('Cliente removido da base', 'ok', (kept.boletos || kept.subscriptions)
+          ? (kept.boletos || 0) + ' boleto(s) e ' + (kept.subscriptions || 0) + ' assinatura(s) mantidos no histórico.'
+          : 'Nenhum documento fiscal pendente.');
+        closeModal();
+        await go(state.route);
+      } else if (name === 'boleto-view') {
         const detail = await api('/v1/boletos/' + encodeURIComponent(id));
         openBoleto(detail.boleto || detail);
       } else if (name === 'boleto-pay') {

@@ -1254,10 +1254,14 @@ CREATE INDEX IF NOT EXISTS idx_ccip_messages_lane
   ON ccip_messages(lane_id, sequence DESC);
 `;
 
+const SCHEMA_V12 = `
+ALTER TABLE customers ADD COLUMN archived_at TEXT;
+`;
+
 export function migrate(db: Db): void {
   const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined;
   const version = row?.user_version ?? 0;
-  if (version >= 11) return;
+  if (version >= 12) return;
   db.exec('BEGIN IMMEDIATE;');
   try {
     if (version < 1) db.exec(SCHEMA);
@@ -1271,7 +1275,8 @@ export function migrate(db: Db): void {
     if (version < 9) db.exec(SCHEMA_V9);
     if (version < 10) db.exec(SCHEMA_V10);
     if (version < 11) db.exec(SCHEMA_V11);
-    db.exec('PRAGMA user_version = 11;');
+    if (version < 12) db.exec(SCHEMA_V12);
+    db.exec('PRAGMA user_version = 12;');
     db.exec('COMMIT;');
   } catch (error) {
     db.exec('ROLLBACK;');

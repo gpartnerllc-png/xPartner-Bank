@@ -26,7 +26,8 @@ O aplicativo é servido em `GET /app`; o checkout público em `GET /pay/:code`. 
 - Unicidade por `(merchant_id, document)`; duplicata retorna `409`.
 - Dados sensíveis são expostos apenas mascarados (`529.***.***-25`, `11.***.***/****-81`).
 - E-mail, telefone, cidade e UF são normalizados; UF em duas letras maiúsculas.
-- `PATCH /v1/customers/:id` permite atualização cadastral sem alterar o documento.
+- `PATCH /v1/customers/:id` permite atualização cadastral sem alterar o documento; `status` aceita `ACTIVE`/`BLOCKED` (bloqueio impede novas cobranças).
+- `DELETE /v1/customers/:id` remove o cliente da base ativa: apaga e-mail, telefone e cidade (LGPD), mantém documento e histórico fiscal (boletos, assinaturas, NFC-e) e retorna `{ customer, preserved: { boletos, subscriptions } }`. Reaparece como `Cliente removido · <sufixo>`. Cadastrar o mesmo documento reativa o registro.
 
 ## 3. Boleto registrado
 
@@ -97,7 +98,8 @@ O extrato é uma leitura do ledger, não um saldo materializado:
 |---|---|---|
 | `GET` | `/v1/customers` | Lista clientes do estabelecimento |
 | `POST` | `/v1/customers` | Cria cliente PF/PJ |
-| `GET/PATCH` | `/v1/customers/:id` | Consulta/atualiza cliente |
+| `GET/PATCH` | `/v1/customers/:id` | Consulta/atualiza/bloqueia cliente |
+| `DELETE` | `/v1/customers/:id` | Remove da base ativa com histórico preservado |
 | `GET` | `/v1/boletos` | Lista boletos (filtro por status) |
 | `POST` | `/v1/boletos` | Emite boleto registrado |
 | `GET` | `/v1/boletos/:reference` | Consulta por id, nosso número, barras ou linha |

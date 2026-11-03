@@ -23,6 +23,7 @@ export interface CustomerRow {
   uf: string | null;
   status: string;
   metadata: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +52,7 @@ function publicCustomer(row: CustomerRow) {
     uf: row.uf,
     status: row.status,
     metadata: row.metadata ? (JSON.parse(row.metadata) as unknown) : null,
+    archivedAt: row.archived_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -109,8 +111,20 @@ export class CustomerService {
     } catch (error) {
       if (String(error).includes('UNIQUE')) {
         const existing = this.db
-          .prepare('SELECT id FROM customers WHERE merchant_id = ? AND document = ?')
-          .get(input.merchantId, document) as { id: string } | undefined;
+          .prepare('SELECT * FROM customers WHERE merchant_id = ? AND document = ?')
+          .get(input.merchantId, document) as CustomerRow | undefined;
+        if (existing?.archived_at) {
+          this.db
+            .prepare(
+              `UPDATE customers
+                  SET name = ?, email = ?, phone = ?, city = ?, uf = ?, status = 'ACTIVE',
+                      metadata = NULL, archived_at = NULL, updated_at = ?
+                WHERE id = ?`,
+            )
+            .run(name, email, phone, city, uf, createdAt, existing.id);
+          audit(this.db, 'merchant', 'CUSTOMER_RESTORED', existing.id, { kind, name });
+          return publicCustomer(this.getRow(existing.id));
+        }
         throw new AppError('CUSTOMER_EXISTS', 'Já existe um cliente com este documento.', 409, {
           customerId: existing?.id,
         });
@@ -154,19 +168,48 @@ export class CustomerService {
     return publicCustomer(this.getRow(customerId));
   }
 
-  list(merchantId: string, options: { limit?: number; search?: string } = {}) {
+  archive(merchantId: string, customerId: string) {
+    const row = this.ensureCustomer(merchantId, customerId);
+    if (row.archived_at) throw new AppError('CUSTOMER_ARCHIVED', 'Cliente já removido da base.', 409);
+    const archivedAt = nowIso();
+    const countOf = (sql: string) =>
+      (this.db.prepare(sql).get(customerId) as { total: number }).total;
+    const preserved = {
+      boletos: countOf('SELECT COUNT(*) AS total FROM boletos WHERE customer_id = ?'),
+      subscriptions: countOf('SELECT COUNT(*) AS total FROM subscriptions WHERE customer_id = ?'),
+    };
+    const metadata = {
+      ...(row.metadata ? (JSON.parse(row.metadata) as Record<string, unknown>) : {}),
+      archivedName: row.name,
+    };
+    tx(this.db, () => {
+      this.db
+        .prepare(
+          `UPDATE customers
+              SET name = ?, email = NULL, phone = NULL, city = NULL, uf = NULL,
+                  status = 'BLOCKED', metadata = ?, archived_at = ?, updated_at = ?
+            WHERE id = ?`,
+        )
+        .run(`Cliente removido · ${customerId.slice(-6)}`, JSON.stringify(metadata), archivedAt, archivedAt, customerId);
+      audit(this.db, 'merchant', 'CUSTOMER_ARCHIVED', customerId, preserved);
+    });
+    return { customer: publicCustomer(this.getRow(customerId)), preserved };
+  }
+
+  list(merchantId: string, options: { limit?: number; search?: string; includeArchived?: boolean } = {}) {
     const limit = Math.min(100, Math.max(1, options.limit ?? 50));
     const search = options.search?.trim();
+    const archivedFilter = options.includeArchived ? '' : 'AND archived_at IS NULL';
     const rows = search
       ? (this.db
           .prepare(
             `SELECT * FROM customers
-              WHERE merchant_id = ? AND (name LIKE ? OR document LIKE ?)
+              WHERE merchant_id = ? ${archivedFilter} AND (name LIKE ? OR document LIKE ?)
               ORDER BY name ASC LIMIT ?`,
           )
           .all(merchantId, `%${search}%`, `%${search.replace(/\D/g, '')}%`, limit) as unknown as CustomerRow[])
       : (this.db
-          .prepare('SELECT * FROM customers WHERE merchant_id = ? ORDER BY name ASC LIMIT ?')
+          .prepare(`SELECT * FROM customers WHERE merchant_id = ? ${archivedFilter} ORDER BY name ASC LIMIT ?`)
           .all(merchantId, limit) as unknown as CustomerRow[]);
     return rows.map(publicCustomer);
   }
@@ -203,7 +246,7 @@ export class CustomerService {
 
   count(merchantId: string): number {
     const row = this.db
-      .prepare('SELECT COUNT(*) AS total FROM customers WHERE merchant_id = ?')
+      .prepare("SELECT COUNT(*) AS total FROM customers WHERE merchant_id = ? AND archived_at IS NULL")
       .get(merchantId) as { total: number };
     return row.total;
   }
