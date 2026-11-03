@@ -1,7 +1,8 @@
 import { HttpError } from './http.ts';
 
 const encoder = new TextEncoder();
-const PBKDF2_ITERATIONS = 210_000;
+// Acima de 100k iterações o PBKDF2 estoura o limite de CPU do Workers e a derivação falha.
+const PBKDF2_ITERATIONS = 100_000;
 const SESSION_COOKIE = 'xp_bank_session';
 
 const COMMON_PASSWORDS = new Set([

@@ -126,7 +126,7 @@ npm run check   # tsc strict
 
 | Item | Node | Edge |
 |---|---|---|
-| Hash de senha | scrypt (N=16384) | PBKDF2-SHA256 210k (Workers não expõe scrypt) |
+| Hash de senha | scrypt (N=16384) | PBKDF2-SHA256 100k (Workers não expõe scrypt; acima disso a CPU do Worker estoura) |
 | Banco | SQLite WAL local | D1 (SQLite distribuído, **sem** transação interativa) |
 | Postura de escrita | `BEGIN IMMEDIATE` + serviço | trigger atômico no D1 |
 | Eventos | outbox + bus em processo | Queues com DLQ e deduplicação em `edge_events` |

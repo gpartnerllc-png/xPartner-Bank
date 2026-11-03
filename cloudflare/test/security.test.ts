@@ -16,7 +16,7 @@ import {
 
 test('senha PBKDF2 verifica corretamente e rejeita senha errada', async () => {
   const stored = await hashPassword('BancoForte2026');
-  assert.match(stored, /^pbkdf2\$210000\$/);
+  assert.match(stored, /^pbkdf2\$100000\$/);
   assert.equal(await verifyPassword('BancoForte2026', stored), true);
   assert.equal(await verifyPassword('BancoForte2027', stored), false);
   assert.equal(await verifyPassword('BancoForte2026', 'lixo'), false);
