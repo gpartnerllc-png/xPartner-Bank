@@ -281,6 +281,29 @@
   .kpi-value,.li-value,.stat b{color:var(--text)}
   .form-foot .btn.primary{min-width:132px}
 </style>
+<style id="xp-nav-steps">
+  /* ── Etapas expansíveis na lateral: mesma janela, mesma sequência ── */
+  .side-nav button .chev{margin-left:auto;flex:none;width:19px;height:19px;border-radius:6px;display:grid;place-items:center;color:var(--dim);cursor:pointer;transition:transform .22s ease,background .2s ease,color .2s ease}
+  .side-nav button .chev svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .side-nav button:hover .chev{color:#6d28d9;background:rgba(124,58,237,.10)}
+  .side-nav button.open .chev{transform:rotate(90deg);color:#6d28d9;background:rgba(124,58,237,.14)}
+  .side-nav button .count{margin-left:8px}
+  .nav-steps{display:grid;grid-template-rows:0fr;margin:1px 0 3px 25px;border-left:2px solid rgba(124,58,237,.28);transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
+  .nav-steps.open{grid-template-rows:1fr}
+  .nav-steps-clip{overflow:hidden;min-height:0;padding:0;transition:padding .3s cubic-bezier(.4,0,.2,1)}
+  .nav-steps.open .nav-steps-clip{padding:5px 0 7px}
+  .nav-steps-clip button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;color:var(--muted);font-size:11.5px;padding:6px 8px;border-radius:8px;cursor:pointer;text-align:left;transition:.15s;font-family:inherit}
+  .nav-steps-clip button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-steps-clip button i{flex:none;width:18px;height:18px;border-radius:6px;display:grid;place-items:center;background:rgba(124,58,237,.10);color:#6d28d9;font-size:9.5px;font-weight:800;font-style:normal;transition:.15s}
+  .nav-steps-clip button:hover{background:#f1ecfe;color:#3b2a63}
+  .nav-steps-clip button:hover i{background:rgba(124,58,237,.22)}
+  .nav-steps-clip button.active{background:linear-gradient(90deg,rgba(124,58,237,.16),rgba(124,58,237,.05));color:#5b21b6;font-weight:600}
+  .nav-steps-clip button.active i{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}
+  .card,.grid.kpis,.view-head{scroll-margin-top:74px}
+  .flash-step{animation:stepFlash 1.6s ease}
+  @keyframes stepFlash{0%{outline:3px solid rgba(124,58,237,.55);outline-offset:4px}100%{outline:3px solid rgba(124,58,237,0);outline-offset:12px}}
+  @media (max-width:860px){.side-nav button .chev,.nav-steps{display:none!important}}
+</style>
 
 
 </head>
@@ -1631,7 +1654,164 @@
     } catch (error) {
       toast('Falha ao carregar ' + title, 'err', error.message);
     }
+    syncNavSteps(route);
   }
+
+  // ── Etapas expansíveis na lateral: mesma janela, mesma sequência ──
+  function collectStepTargets(route) {
+    const section = document.querySelector('section.view[data-view="' + route + '"]');
+    if (!section) return [];
+    const items = [{ label: 'Início', target: section }];
+    const tabs = Array.from(section.querySelectorAll(':scope .tabs button[data-pane]'));
+    if (tabs.length) {
+      tabs.forEach((tab) => items.push({ label: tab.textContent.trim(), target: tab, pane: tab.dataset.pane }));
+      return items;
+    }
+    const kpis = section.querySelector(':scope .grid.kpis');
+    if (kpis) items.push({ label: 'Indicadores', target: kpis });
+    section.querySelectorAll(':scope .card-head h3').forEach((heading) => {
+      const card = heading.closest('.card');
+      if (!card || card.closest('.grid.kpis') || items.some((item) => item.target === card)) return;
+      items.push({ label: heading.textContent.replace(/\s+/g, ' ').trim(), target: card });
+    });
+    section.querySelectorAll(':scope .card').forEach((card) => {
+      if (card.closest('.grid.kpis') || card.querySelector(':scope .card-head h3') || items.some((item) => item.target === card)) return;
+      items.push({ label: card.querySelector(':scope table') ? 'Lançamentos' : 'Detalhes', target: card });
+    });
+    return items;
+  }
+
+  function stepsBoxOf(button, create) {
+    let box = button.nextElementSibling;
+    if (box && box.classList.contains('nav-steps')) return box;
+    if (!create) return null;
+    box = document.createElement('div');
+    box.className = 'nav-steps';
+    const clip = document.createElement('div');
+    clip.className = 'nav-steps-clip';
+    box.appendChild(clip);
+    button.after(box);
+    return box;
+  }
+
+  function resolveStepTarget(item, route) {
+    const section = document.querySelector('section.view[data-view="' + route + '"]');
+    if (!item.target) return section;
+    if (item.target === section || item.target.offsetParent) return item.target;
+    return section;
+  }
+
+  function markActiveStep(route, index) {
+    const button = document.querySelector('.side-nav button[data-route="' + route + '"]');
+    const box = button && stepsBoxOf(button, false);
+    if (!box) return;
+    box.querySelectorAll(':scope .nav-steps-clip button').forEach((step, i) => step.classList.toggle('active', i === index));
+  }
+
+  function updateStepSpy(route) {
+    const button = document.querySelector('.side-nav button[data-route="' + route + '"]');
+    const box = button && stepsBoxOf(button, false);
+    if (!box || !box._items) return;
+    if (stepLock >= 0) { markActiveStep(route, stepLock); return; }
+    let current = 0;
+    box._items.forEach((item, i) => {
+      const target = resolveStepTarget(item, route);
+      if (target && target.getBoundingClientRect().top <= 110) current = i;
+    });
+    markActiveStep(route, current);
+  }
+
+  function flashStepTarget(target) {
+    target.classList.remove('flash-step');
+    void target.offsetWidth;
+    target.classList.add('flash-step');
+  }
+
+  function refreshNavSteps(route) {
+    const button = document.querySelector('.side-nav button[data-route="' + route + '"]');
+    if (!button) return;
+    const box = stepsBoxOf(button, true);
+    const clip = box.querySelector(':scope .nav-steps-clip');
+    const items = collectStepTargets(route);
+    box._items = items;
+    clip.replaceChildren(...items.map((item, index) => {
+      const step = document.createElement('button');
+      step.type = 'button';
+      const badge = document.createElement('i');
+      badge.textContent = String(index + 1).padStart(2, '0');
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      step.append(badge, label);
+      step.addEventListener('click', async () => {
+        await go(route);
+        if (item.pane) {
+          const section = document.querySelector('section.view[data-view="' + route + '"]');
+          const tab = section && section.querySelector('.tabs button[data-pane="' + item.pane + '"]');
+          const pane = section && section.querySelector('.pane[data-pane-view="' + item.pane + '"]');
+          const target = pane || tab;
+          if (target) {
+            if (tab) tab.click();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            flashStepTarget(target);
+          }
+        } else {
+          const target = resolveStepTarget(item, route);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            flashStepTarget(target);
+          }
+        }
+        stepLock = index;
+        markActiveStep(route, index);
+      });
+      return step;
+    }));
+    updateStepSpy(route);
+  }
+
+  function setStepsOpen(button, open) {
+    const box = stepsBoxOf(button, false);
+    button.classList.toggle('open', open);
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (box) box.classList.toggle('open', open);
+  }
+
+  function syncNavSteps(route) {
+    const button = document.querySelector('.side-nav button[data-route="' + route + '"]');
+    if (!button) return;
+    refreshNavSteps(route);
+    document.querySelectorAll('.side-nav button[data-route]').forEach((other) => setStepsOpen(other, other === button));
+    setTimeout(() => { if (state.route === route) refreshNavSteps(route); }, 800);
+  }
+
+  document.querySelectorAll('.side-nav button[data-route]').forEach((button) => {
+    const chev = document.createElement('span');
+    chev.className = 'chev';
+    chev.setAttribute('role', 'button');
+    chev.setAttribute('tabindex', '0');
+    const routeTitle = ROUTES[button.dataset.route];
+    chev.setAttribute('aria-label', 'Abrir etapas de ' + (routeTitle ? routeTitle[1] : 'esta seção'));
+    chev.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+    button.appendChild(chev);
+    const toggle = () => {
+      const open = !button.classList.contains('open');
+      setStepsOpen(button, open);
+      if (open) refreshNavSteps(button.dataset.route);
+    };
+    chev.addEventListener('click', (event) => { event.stopPropagation(); event.preventDefault(); toggle(); });
+    chev.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggle(); }
+    });
+  });
+
+  let stepSpyPending = false;
+  let stepLock = -1;
+  window.addEventListener('scroll', () => {
+    if (stepSpyPending) return;
+    stepSpyPending = true;
+    stepLock = -1;
+    requestAnimationFrame(() => { stepSpyPending = false; updateStepSpy(state.route); });
+  }, { passive: true });
 
   function paintWorkspace(merchant) {
     if (!merchant) return;

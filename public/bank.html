@@ -493,6 +493,29 @@
     .module-intro{padding:17px}
   }
 </style>
+<style id="xp-nav-steps">
+  /* ── Etapas expansíveis na lateral: mesma janela, mesma sequência ── */
+  .nav button .chev{margin-left:auto;flex:none;width:20px;height:20px;border-radius:7px;display:grid;place-items:center;color:var(--dim);cursor:pointer;transition:transform .22s ease,background .2s ease,color .2s ease}
+  .nav button .chev svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .nav button:hover .chev{color:#6d28d9;background:rgba(124,58,237,.10)}
+  .nav button.open .chev{transform:rotate(90deg);color:#6d28d9;background:rgba(124,58,237,.14)}
+  .nav button .count{margin-left:8px}
+  .nav-steps{display:grid;grid-template-rows:0fr;margin:1px 0 3px 27px;border-left:2px solid rgba(124,58,237,.28);transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
+  .nav-steps.open{grid-template-rows:1fr}
+  .nav-steps-clip{overflow:hidden;min-height:0;padding:0;transition:padding .3s cubic-bezier(.4,0,.2,1)}
+  .nav-steps.open .nav-steps-clip{padding:5px 0 7px}
+  .nav-steps-clip button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;color:var(--muted);font-size:11.5px;padding:6px 8px;border-radius:8px;cursor:pointer;text-align:left;transition:.15s;font-family:inherit}
+  .nav-steps-clip button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-steps-clip button i{flex:none;width:18px;height:18px;border-radius:6px;display:grid;place-items:center;background:rgba(124,58,237,.10);color:#6d28d9;font-size:9.5px;font-weight:800;font-style:normal;font-family:var(--mono);transition:.15s}
+  .nav-steps-clip button:hover{background:#f1ecfe;color:#3b2a63}
+  .nav-steps-clip button:hover i{background:rgba(124,58,237,.22)}
+  .nav-steps-clip button.active{background:linear-gradient(90deg,rgba(124,58,237,.16),rgba(124,58,237,.05));color:#5b21b6;font-weight:650}
+  .nav-steps-clip button.active i{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}
+  .card,.grid.kpis,.module-intro,.ep-group,.section-title{scroll-margin-top:132px}
+  .flash-step{animation:stepFlash 1.6s ease}
+  @keyframes stepFlash{0%{outline:3px solid rgba(124,58,237,.55);outline-offset:4px}100%{outline:3px solid rgba(124,58,237,0);outline-offset:12px}}
+  @media (max-width:920px){.nav button .chev,.nav-steps{display:none!important}}
+</style>
 </head>
 <body>
 <canvas id="neural" aria-hidden="true"></canvas>
@@ -1509,6 +1532,7 @@
     if (view === 'tokenization') loadTokenization();
     if (view === 'api') renderApiDocs();
     if (view === 'transfer') syncTransferLimits();
+    syncNavSteps(view);
   }
   $$('#main-nav button[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
   $$('#module-tabs button').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
@@ -2870,6 +2894,140 @@
   $('#pix-copy').addEventListener('click', () => {
     if (state.pixCode) void copyText(state.pixCode, 'Código copia-e-cola copiado.');
   });
+
+  // ── Etapas expansíveis na lateral: mesma janela, mesma sequência ────
+  function collectStepTargets(view) {
+    const section = document.getElementById('view-' + view);
+    if (!section) return [];
+    const items = [{ label: 'Início', target: section }];
+    const kpis = section.querySelector(':scope .kpis');
+    if (kpis) items.push({ label: 'Indicadores', target: kpis });
+    section.querySelectorAll(':scope .card-head h3, :scope .section-title h3').forEach((heading) => {
+      const card = heading.closest('.card');
+      if (!card || card.closest('.kpis') || items.some((item) => item.target === card)) return;
+      items.push({ label: heading.textContent.replace(/\s+/g, ' ').trim(), target: card });
+    });
+    section.querySelectorAll(':scope .card').forEach((card) => {
+      if (card.closest('.kpis') || card.querySelector(':scope .card-head h3') || items.some((item) => item.target === card)) return;
+      items.push({ label: card.querySelector(':scope table') ? 'Lançamentos' : 'Detalhes', target: card });
+    });
+    return items;
+  }
+
+  function stepsBoxOf(button, create) {
+    let box = button.nextElementSibling;
+    if (box && box.classList.contains('nav-steps')) return box;
+    if (!create) return null;
+    box = document.createElement('div');
+    box.className = 'nav-steps';
+    const clip = document.createElement('div');
+    clip.className = 'nav-steps-clip';
+    box.appendChild(clip);
+    button.after(box);
+    return box;
+  }
+
+  function resolveStepTarget(item, view) {
+    const section = document.getElementById('view-' + view);
+    if (!item.target) return section;
+    if (item.target === section || item.target.offsetParent) return item.target;
+    return section;
+  }
+
+  function markActiveStep(view, index) {
+    const button = $('#main-nav button[data-view="' + view + '"]');
+    const box = button && stepsBoxOf(button, false);
+    if (!box) return;
+    box.querySelectorAll(':scope .nav-steps-clip button').forEach((step, i) => step.classList.toggle('active', i === index));
+  }
+
+  function updateStepSpy(view) {
+    const button = $('#main-nav button[data-view="' + view + '"]');
+    const box = button && stepsBoxOf(button, false);
+    if (!box || !box._items) return;
+    if (stepLock >= 0) { markActiveStep(view, stepLock); return; }
+    let current = 0;
+    box._items.forEach((item, i) => {
+      const target = resolveStepTarget(item, view);
+      if (target && target.getBoundingClientRect().top <= 150) current = i;
+    });
+    markActiveStep(view, current);
+  }
+
+  function refreshNavSteps(view) {
+    const button = $('#main-nav button[data-view="' + view + '"]');
+    if (!button) return;
+    const box = stepsBoxOf(button, true);
+    const clip = box.querySelector(':scope .nav-steps-clip');
+    const items = collectStepTargets(view);
+    box._items = items;
+    clip.replaceChildren(...items.map((item, index) => {
+      const step = document.createElement('button');
+      step.type = 'button';
+      const badge = document.createElement('i');
+      badge.textContent = String(index + 1).padStart(2, '0');
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      step.append(badge, label);
+      step.addEventListener('click', () => {
+        setView(view);
+        const target = resolveStepTarget(item, view);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          target.classList.remove('flash-step');
+          void target.offsetWidth;
+          target.classList.add('flash-step');
+        }
+        stepLock = index;
+        markActiveStep(view, index);
+      });
+      return step;
+    }));
+    updateStepSpy(view);
+  }
+
+  function setStepsOpen(button, open) {
+    const box = stepsBoxOf(button, false);
+    button.classList.toggle('open', open);
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (box) box.classList.toggle('open', open);
+  }
+
+  function syncNavSteps(view) {
+    const button = $('#main-nav button[data-view="' + view + '"]');
+    if (!button) return;
+    refreshNavSteps(view);
+    $$('#main-nav button[data-view]').forEach((other) => setStepsOpen(other, other === button));
+    setTimeout(() => { if (state.view === view) refreshNavSteps(view); }, 800);
+  }
+
+  $$('#main-nav button[data-view]').forEach((button) => {
+    const chev = document.createElement('span');
+    chev.className = 'chev';
+    chev.setAttribute('role', 'button');
+    chev.setAttribute('tabindex', '0');
+    chev.setAttribute('aria-label', 'Abrir etapas de ' + (titles[button.dataset.view] || 'esta seção'));
+    chev.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+    button.appendChild(chev);
+    const toggle = () => {
+      const open = !button.classList.contains('open');
+      setStepsOpen(button, open);
+      if (open) refreshNavSteps(button.dataset.view);
+    };
+    chev.addEventListener('click', (event) => { event.stopPropagation(); toggle(); });
+    chev.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggle(); }
+    });
+  });
+
+  let stepSpyPending = false;
+  let stepLock = -1;
+  window.addEventListener('scroll', () => {
+    if (stepSpyPending) return;
+    stepSpyPending = true;
+    stepLock = -1;
+    requestAnimationFrame(() => { stepSpyPending = false; updateStepSpy(state.view); });
+  }, { passive: true });
 
   boot();
 })();
