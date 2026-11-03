@@ -283,11 +283,14 @@
 </style>
 <style id="xp-nav-steps">
   /* ── Etapas expansíveis na lateral: mesma janela, mesma sequência ── */
-  .side-nav button .chev{margin-left:auto;flex:none;width:19px;height:19px;border-radius:6px;display:grid;place-items:center;color:var(--dim);cursor:pointer;transition:transform .22s ease,background .2s ease,color .2s ease}
-  .side-nav button .chev svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-  .side-nav button:hover .chev{color:#6d28d9;background:rgba(124,58,237,.10)}
-  .side-nav button.open .chev{transform:rotate(90deg);color:#6d28d9;background:rgba(124,58,237,.14)}
+  .side-nav button .chev,.side-foot button.foot-link .chev{margin-left:auto;flex:none;width:19px;height:19px;border-radius:6px;display:grid;place-items:center;color:var(--dim);cursor:pointer;transition:transform .22s ease,background .2s ease,color .2s ease}
+  .side-nav button .chev svg,.side-foot button.foot-link .chev svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .side-nav button:hover .chev,.side-foot button.foot-link:hover .chev{color:#6d28d9;background:rgba(124,58,237,.10)}
+  .side-nav button.open .chev,.side-foot button.foot-link.open .chev{transform:rotate(90deg);color:#6d28d9;background:rgba(124,58,237,.14)}
   .side-nav button .count{margin-left:8px}
+  .side-foot button.foot-link{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--dim);font-size:11.5px;padding:6px 10px;border-radius:8px;cursor:pointer;text-align:left;transition:.16s;font-family:inherit}
+  .side-foot button.foot-link:hover{color:var(--text);background:#eef4fb}
+  .side-foot button.foot-link>svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.85}
   .nav-steps{display:grid;grid-template-rows:0fr;margin:1px 0 3px 25px;border-left:2px solid rgba(124,58,237,.28);transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
   .nav-steps.open{grid-template-rows:1fr}
   .nav-steps-clip{overflow:hidden;min-height:0;padding:0;transition:padding .3s cubic-bezier(.4,0,.2,1)}
@@ -388,9 +391,12 @@
     </nav>
 
     <div class="side-foot">
-      <a href="/">Dashboard de vendas <span>↗</span></a>
-      <a href="/docs">API / OpenAPI <span>↗</span></a>
-      <a href="/tokenization.html">Ativos digitais <span>↗</span></a>
+      <button type="button" class="foot-link" id="foot-sales"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg><span class="label">Dashboard de vendas</span><span class="chev" role="button" tabindex="0" aria-label="Abrir etapas do Dashboard de vendas"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></button>
+      <div class="nav-steps" id="foot-sales-steps"><div class="nav-steps-clip"></div></div>
+      <button type="button" class="foot-link" id="foot-docs"><svg viewBox="0 0 24 24"><path d="M8 5l-5 7 5 7M16 5l5 7-5 7"/><path d="M13 4l-2 16"/></svg><span class="label">API / OpenAPI</span><span class="chev" role="button" tabindex="0" aria-label="Abrir etapas da API e OpenAPI"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></button>
+      <div class="nav-steps" id="foot-docs-steps"><div class="nav-steps-clip"></div></div>
+      <button type="button" class="foot-link" id="foot-assets"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span class="label">Ativos digitais</span><span class="chev" role="button" tabindex="0" aria-label="Abrir etapas de Ativos digitais"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></button>
+      <div class="nav-steps" id="foot-assets-steps"><div class="nav-steps-clip"></div></div>
     </div>
   </aside>
 
@@ -1795,8 +1801,8 @@
     button.appendChild(chev);
     const toggle = () => {
       const open = !button.classList.contains('open');
-      setStepsOpen(button, open);
       if (open) refreshNavSteps(button.dataset.route);
+      setStepsOpen(button, open);
     };
     chev.addEventListener('click', (event) => { event.stopPropagation(); event.preventDefault(); toggle(); });
     chev.addEventListener('keydown', (event) => {
@@ -1812,6 +1818,72 @@
     stepLock = -1;
     requestAnimationFrame(() => { stepSpyPending = false; updateStepSpy(state.route); });
   }, { passive: true });
+
+  const FOOT_LINKS = [
+    {
+      id: 'foot-sales', url: '/',
+      steps: [
+        ['visao', 'Início'], ['kpis', 'Indicadores'], ['vendas', 'Fluxo de vendas'],
+        ['transacoes', 'Últimas transações'], ['taptopay', 'Simulador Tap to Pay'],
+        ['liquidacao', 'Liquidação & antecipação'], ['fiscal', 'Notas fiscais'],
+        ['pixCard', 'Cobrança Pix'], ['risco', 'Grafo de risco'], ['ledger', 'Ledger de dupla entrada'],
+      ],
+    },
+    {
+      id: 'foot-docs', url: '/docs',
+      steps: [['', 'Início'], ['contrato', 'Contrato vivo'], ['swagger', 'OpenAPI interativo']],
+    },
+    {
+      id: 'foot-assets', url: '/tokenization.html',
+      steps: [
+        ['', 'Início'], ['kpis', 'Indicadores'], ['ativos', 'Ativos tokenizados'],
+        ['bio', 'Bioativos e royalties'], ['depin', 'DePIN · Proof of Physical Work'],
+        ['dao', 'Governança DAO'], ['agentes', 'Agentes autônomos'], ['pontes', 'Pontes multi-trilho'],
+        ['ancoras', 'Cadeia de âncoras'], ['credenciais', 'Credenciais e prova Merkle'], ['contabilidade', 'Contabilidade'],
+      ],
+    },
+  ];
+  FOOT_LINKS.forEach((link) => {
+    const button = document.getElementById(link.id);
+    if (!button) return;
+    const box = document.getElementById(link.id + '-steps');
+    const clip = box && box.querySelector('.nav-steps-clip');
+    const chev = button.querySelector('.chev');
+    button.addEventListener('click', () => { window.location.assign(link.url); });
+    const buildFootSteps = () => {
+      if (!clip || clip.childElementCount) return;
+      clip.replaceChildren(...link.steps.map(([hash, label], index) => {
+        const step = document.createElement('button');
+        step.type = 'button';
+        const badge = document.createElement('i');
+        badge.textContent = String(index + 1).padStart(2, '0');
+        const span = document.createElement('span');
+        span.textContent = label;
+        step.append(badge, span);
+        step.addEventListener('click', (event) => {
+          event.stopPropagation();
+          window.location.assign(link.url + (hash ? '#' + hash : ''));
+        });
+        return step;
+      }));
+    };
+    const toggleFoot = (open) => {
+      button.classList.toggle('open', open);
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (box) box.classList.toggle('open', open);
+      if (open) buildFootSteps();
+    };
+    if (chev) {
+      chev.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleFoot(!button.classList.contains('open'));
+      });
+      chev.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggleFoot(!button.classList.contains('open')); }
+      });
+    }
+  });
 
   function paintWorkspace(merchant) {
     if (!merchant) return;

@@ -495,11 +495,15 @@
 </style>
 <style id="xp-nav-steps">
   /* ── Etapas expansíveis na lateral: mesma janela, mesma sequência ── */
-  .nav button .chev{margin-left:auto;flex:none;width:20px;height:20px;border-radius:7px;display:grid;place-items:center;color:var(--dim);cursor:pointer;transition:transform .22s ease,background .2s ease,color .2s ease}
-  .nav button .chev svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-  .nav button:hover .chev{color:#6d28d9;background:rgba(124,58,237,.10)}
-  .nav button.open .chev{transform:rotate(90deg);color:#6d28d9;background:rgba(124,58,237,.14)}
+  .nav button .chev,.side-foot button.foot-link .chev{margin-left:auto;flex:none;width:20px;height:20px;border-radius:7px;display:grid;place-items:center;color:var(--dim);cursor:pointer;transition:transform .22s ease,background .2s ease,color .2s ease}
+  .nav button .chev svg,.side-foot button.foot-link .chev svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .nav button:hover .chev,.side-foot button.foot-link:hover .chev{color:#6d28d9;background:rgba(124,58,237,.10)}
+  .nav button.open .chev,.side-foot button.foot-link.open .chev{transform:rotate(90deg);color:#6d28d9;background:rgba(124,58,237,.14)}
   .nav button .count{margin-left:8px}
+  .side-foot button.foot-link{gap:10px;justify-content:flex-start;font-size:12.5px;padding:10px 11px;border-radius:11px;color:var(--muted)}
+  .side-foot button.foot-link:hover{color:#3b2a63;background:#f1ecfe}
+  .side-foot button.foot-link svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.85}
+  .side-foot .nav-steps{margin-left:26px}
   .nav-steps{display:grid;grid-template-rows:0fr;margin:1px 0 3px 27px;border-left:2px solid rgba(124,58,237,.28);transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
   .nav-steps.open{grid-template-rows:1fr}
   .nav-steps-clip{overflow:hidden;min-height:0;padding:0;transition:padding .3s cubic-bezier(.4,0,.2,1)}
@@ -611,7 +615,8 @@
       <button data-view="security"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg><span class="label">Senha e sessão</span></button>
     </nav>
     <div class="side-foot">
-      <a href="/app"><span>Dashboard lojista</span><span>↗</span></a>
+      <button type="button" class="foot-link" id="foot-merchant"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M3 9h18M8 21h8M12 17v4"/></svg><span class="label">Dashboard lojista</span><span class="chev" role="button" tabindex="0" aria-label="Abrir etapas do Dashboard lojista"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></button>
+      <div class="nav-steps" id="foot-merchant-steps"><div class="nav-steps-clip"></div></div>
       <button type="button" id="logout-side"><span class="label">Sair</span><span>⏻</span></button>
     </div>
   </aside>
@@ -3011,8 +3016,8 @@
     button.appendChild(chev);
     const toggle = () => {
       const open = !button.classList.contains('open');
-      setStepsOpen(button, open);
       if (open) refreshNavSteps(button.dataset.view);
+      setStepsOpen(button, open);
     };
     chev.addEventListener('click', (event) => { event.stopPropagation(); toggle(); });
     chev.addEventListener('keydown', (event) => {
@@ -3028,6 +3033,52 @@
     stepLock = -1;
     requestAnimationFrame(() => { stepSpyPending = false; updateStepSpy(state.view); });
   }, { passive: true });
+
+  const MERCHANT_STEPS = [
+    ['overview', 'Visão geral'], ['sales', 'Vendas'], ['charges', 'Cobranças'],
+    ['subscriptions', 'Assinaturas'], ['customers', 'Clientes'], ['fiscal', 'Notas fiscais'],
+    ['statement', 'Conta e extrato'], ['settlements', 'Liquidações'], ['risk', 'Risco e antifraude'],
+    ['openfinance', 'Open Finance'], ['investments', 'Investimentos'], ['tokenization', 'Tokenização e Web3'],
+  ];
+  const footMerchant = document.getElementById('foot-merchant');
+  if (footMerchant) {
+    const footBox = document.getElementById('foot-merchant-steps');
+    const footClip = footBox && footBox.querySelector('.nav-steps-clip');
+    const footChev = footMerchant.querySelector('.chev');
+    footMerchant.addEventListener('click', () => { window.location.assign('/app'); });
+    const buildFootSteps = () => {
+      if (!footClip || footClip.childElementCount) return;
+      footClip.replaceChildren(...MERCHANT_STEPS.map(([route, label], index) => {
+        const step = document.createElement('button');
+        step.type = 'button';
+        const badge = document.createElement('i');
+        badge.textContent = String(index + 1).padStart(2, '0');
+        const span = document.createElement('span');
+        span.textContent = label;
+        step.append(badge, span);
+        step.addEventListener('click', (event) => {
+          event.stopPropagation();
+          window.location.assign('/app#' + route);
+        });
+        return step;
+      }));
+    };
+    const toggleFoot = (open) => {
+      footMerchant.classList.toggle('open', open);
+      footMerchant.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (footBox) footBox.classList.toggle('open', open);
+      if (open) buildFootSteps();
+    };
+    if (footChev) {
+      footChev.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleFoot(!footMerchant.classList.contains('open'));
+      });
+      footChev.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggleFoot(!footMerchant.classList.contains('open')); }
+      });
+    }
+  }
 
   boot();
 })();

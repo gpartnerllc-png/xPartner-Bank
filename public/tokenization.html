@@ -297,6 +297,9 @@
     .nav{order:3;width:100%;justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap}
     .nav a{white-space:nowrap}
   }
+  .card,section{scroll-margin-top:84px}
+  .flash-step{animation:xpStepFlash 1.6s ease}
+  @keyframes xpStepFlash{0%{outline:3px solid rgba(124,58,237,.55);outline-offset:4px}100%{outline:3px solid rgba(124,58,237,0);outline-offset:12px}}
 </style>
 
 </head>
@@ -555,7 +558,7 @@
         <div id="anchorList"></div>
       </article>
 
-      <article class="card">
+      <article class="card" id="credenciais">
         <div class="card-head">
           <div><h3>Credenciais e prova Merkle</h3><p>Compromisso SHA-256 com salt do titular; prova de inclusão sem revelar os demais membros do conjunto.</p></div>
           <span class="tag violet">selective disclosure</span>
@@ -575,7 +578,7 @@
         <div class="mono" id="zkSalt" style="margin-top:8px;color:var(--dim);word-break:break-all"></div>
       </article>
 
-      <article class="card">
+      <article class="card" id="contabilidade">
         <div class="card-head"><div><h3>Contabilidade</h3><p>Últimos lançamentos de lastro, royalty e recompensa.</p></div></div>
         <div class="mono" id="ledgerSummary" style="color:var(--muted);line-height:1.7">—</div>
       </article>
@@ -1129,6 +1132,24 @@
 
   boot();
 })();
+</script>
+<script>
+function xpFlashTarget() {
+  const id = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+  if (!id) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'instant', block: 'start' });
+  el.classList.remove('flash-step');
+  void el.offsetWidth;
+  el.classList.add('flash-step');
+  setTimeout(() => el.classList.remove('flash-step'), 1700);
+}
+window.addEventListener('DOMContentLoaded', () => {
+  xpFlashTarget();
+  setTimeout(xpFlashTarget, 600);
+  setTimeout(xpFlashTarget, 1400);
+});
 </script>
 </body>
 </html>
