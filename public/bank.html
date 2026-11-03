@@ -406,6 +406,93 @@
     .auth-card{padding:22px}
   }
 </style>
+<style id="xp-modules">
+  /* ── Hub único: abas de módulo, seta de voltar e cores claras ────── */
+  :root{
+    --purple:#7c3aed;--purple-2:#a855f7;--purple-soft:#f4eeff;
+    --orange-soft:#fff3e6;--blue-soft:#edf3ff;--green:#0e9f6e;--green-soft:#e9f7f2;
+  }
+  body{background-image:
+    radial-gradient(1100px 680px at 88% -14%,rgba(249,115,22,.10),transparent 60%),
+    radial-gradient(980px 640px at -8% 4%,rgba(37,99,235,.10),transparent 62%),
+    radial-gradient(860px 580px at 76% 52%,rgba(124,58,237,.08),transparent 64%),
+    radial-gradient(900px 660px at 50% 112%,rgba(16,185,129,.09),transparent 62%),
+    linear-gradient(180deg,#fbfcff 0%,#f4f7fd 48%,#edf3fa 100%)}
+  .crumb{display:flex;align-items:center;gap:12px;min-width:0}
+  .crumb-text{min-width:0}
+  .back-btn{width:34px;height:34px;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:17px;line-height:1;display:grid;place-items:center;cursor:pointer;flex:none;transition:.16s}
+  .back-btn:hover{color:var(--text);border-color:var(--line-strong);background:#f2f7ff;transform:translateX(-1px)}
+  .module-tabs{display:flex;gap:8px;padding:10px 28px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.86);backdrop-filter:blur(16px);overflow-x:auto;scrollbar-width:none}
+  .module-tabs::-webkit-scrollbar{display:none}
+  .module-tabs button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:12px;font-weight:650;padding:9px 15px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:.16s}
+  .module-tabs button i{width:7px;height:7px;border-radius:50%;background:#c3d3e6;transition:.16s}
+  .module-tabs button:hover{border-color:var(--line-strong);color:var(--text);background:#f8fbff}
+  .module-tabs button.active{color:#fff;border-color:transparent;box-shadow:0 10px 26px -16px rgba(10,35,71,.65)}
+  .module-tabs button.active i{background:rgba(255,255,255,.9)}
+  .module-tabs button[data-module="conta"].active{background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
+  .module-tabs button[data-module="web3"].active{background:linear-gradient(135deg,#6d28d9,#a855f7)}
+  .module-tabs button[data-module="tokenizacao"].active{background:linear-gradient(135deg,#ea580c,#f59e0b)}
+  .module-tabs button[data-module="api"].active{background:linear-gradient(135deg,#0f766e,#10b981)}
+  .module-intro{border:1px solid var(--line);border-radius:22px;padding:22px;margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;background:#fff;box-shadow:0 24px 60px -52px rgba(10,35,71,.4)}
+  .module-intro h2{margin:0;font-size:clamp(21px,2.4vw,27px);letter-spacing:-.7px}
+  .module-intro p{margin:8px 0 0;max-width:760px;font-size:12.8px;line-height:1.65;color:var(--muted)}
+  .module-intro .intro-tags{display:flex;gap:7px;flex-wrap:wrap;max-width:330px;justify-content:flex-end}
+  .module-intro.purple{background:linear-gradient(135deg,#f7f2ff,#fff 58%);border-color:rgba(124,58,237,.18)}
+  .module-intro.orange{background:linear-gradient(135deg,#fff5ea,#fff 58%);border-color:rgba(234,88,12,.18)}
+  .module-intro.green{background:linear-gradient(135deg,#effaf5,#fff 58%);border-color:rgba(16,185,129,.2)}
+  .eyebrow-sm{display:inline-flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--purple);margin-bottom:8px;font-weight:700}
+  .module-intro.orange .eyebrow-sm{color:#c2410c}
+  .module-intro.green .eyebrow-sm{color:#047857}
+  .steps{display:grid;gap:11px;counter-reset:step}
+  .steps div{position:relative;padding-left:31px;font-size:12px;color:var(--muted);line-height:1.55}
+  .steps div::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:-1px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;background:linear-gradient(135deg,#6d28d9,#a855f7)}
+  .steps strong{color:var(--text);display:block;font-size:12px}
+  .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .kpis.five{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .line{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:13px;padding:11px 13px;background:#fff}
+  .line b{display:block;font-size:12.5px;font-weight:650}
+  .line small{display:block;margin-top:3px;font-size:11px;color:var(--dim);font-family:var(--mono);word-break:break-word}
+  .line .right{text-align:right;white-space:nowrap;font-size:11.5px;color:var(--muted)}
+  .inline-note{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:12px 14px;font-size:11.8px;line-height:1.6;border:1px solid #dbe7fb;background:var(--blue-soft);color:#33496a;margin-top:14px}
+  .inline-note b{color:#0b4a8f}
+  .inline-note.orange{border-color:#ffe1c2;background:var(--orange-soft);color:#7a4405}
+  .inline-note.orange b{color:#9a3412}
+  .inline-note.green{border-color:#cdeee2;background:var(--green-soft);color:#0a6b4c}
+  .inline-note.green b{color:#047857}
+  .inline-note.purple{border-color:#e6d9fb;background:var(--purple-soft);color:#5b21b6}
+  .inline-note.purple b{color:#6d28d9}
+  .ep-search{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0 14px}
+  .ep-search input{max-width:330px}
+  .ep-groups{display:grid;gap:18px}
+  .ep-group h3{margin:0 0 4px;font-size:13.5px;display:flex;align-items:center;gap:8px}
+  .ep-group h3 span{font-size:10px;font-weight:600;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+  .ep-group>p{margin:0 0 10px;font-size:11.5px;color:var(--dim);line-height:1.5}
+  .ep-list{display:flex;flex-direction:column;gap:7px}
+  .ep{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:#fff}
+  .ep code{font-family:var(--mono);font-size:11.5px;color:#0a2347;word-break:break-word}
+  .ep small{display:block;margin-top:2px;font-size:10.8px;color:var(--dim);line-height:1.45}
+  .m{display:inline-flex;justify-content:center;font-family:var(--mono);font-size:9.5px;font-weight:800;letter-spacing:.04em;padding:4px 6px;border-radius:6px;text-transform:uppercase}
+  .m-get{color:#0b6fb3;background:#e7f3fd}
+  .m-post{color:#0a7a55;background:#e6f7f1}
+  .m-delete{color:#b42318;background:#fdecea}
+  .m-put{color:#6d28d9;background:#f1eafe}
+  .section-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+  .section-title h3{margin:0;font-size:14px}
+  .section-title p{margin:4px 0 0;font-size:11.5px;color:var(--dim)}
+  @media (max-width:1280px){.kpis.five{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media (max-width:1100px){.grid-3{grid-template-columns:1fr 1fr}}
+  @media (max-width:920px){
+    .module-tabs{padding:9px 16px}
+    .module-tabs button{font-size:11.5px;padding:8px 12px}
+    .module-intro .intro-tags{justify-content:flex-start;max-width:none}
+  }
+  @media (max-width:640px){
+    .grid-2,.grid-3{grid-template-columns:1fr}
+    .kpis.five{grid-template-columns:1fr 1fr}
+    .module-intro{padding:17px}
+  }
+</style>
 </head>
 <body>
 <canvas id="neural" aria-hidden="true"></canvas>
@@ -491,6 +578,10 @@
       <button data-view="score"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><span class="label">Score</span></button>
       <button data-view="credit"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5h.01M17.5 14.5h.01"/></svg><span class="label">Crédito</span></button>
       <button data-view="rsfn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4a14 14 0 010 16M12 4a14 14 0 000 16"/></svg><span class="label">RSFN · PAG0004</span></button>
+      <div class="nav-label">Módulos</div>
+      <button data-view="web3"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span class="label">Ativos digitais</span></button>
+      <button data-view="tokenization"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5M3 16l9 5 9-5"/></svg><span class="label">Tokenização</span></button>
+      <button data-view="api"><svg viewBox="0 0 24 24"><path d="M8 5l-5 7 5 7M16 5l5 7-5 7"/><path d="M13 4l-2 16"/></svg><span class="label">API e documentação</span></button>
       <div class="nav-label" id="admin-nav-label" hidden>Administração</div>
       <button data-view="admin" id="admin-nav" hidden><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><circle cx="12" cy="11" r="2.4"/><path d="M8.5 17a4 4 0 017 0"/></svg><span class="label">Console admin</span><span class="count" id="pending-count" hidden>0</span></button>
       <div class="nav-label">Conta e segurança</div>
@@ -498,14 +589,15 @@
     </nav>
     <div class="side-foot">
       <a href="/app"><span>Dashboard lojista</span><span>↗</span></a>
-      <a href="/web3"><span>Web3 institucional</span><span>↗</span></a>
-      <a href="/docs"><span>Documentação da API</span><span>↗</span></a>
       <button type="button" id="logout-side"><span class="label">Sair</span><span>⏻</span></button>
     </div>
   </aside>
   <div class="shell">
     <header class="topbar">
-      <div class="crumb"><small>xp_bank / sessão segura</small><h1 id="page-title">Visão geral</h1></div>
+      <div class="crumb">
+        <button type="button" class="back-btn" id="back-btn" title="Voltar para a tela anterior" aria-label="Voltar" hidden>←</button>
+        <div class="crumb-text"><small id="crumb-scope">xp_bank / conta</small><h1 id="page-title">Visão geral</h1></div>
+      </div>
       <div class="top-right">
         <span class="live"><i class="dot"></i> ledger ativo</span>
         <div class="who">
@@ -515,6 +607,12 @@
         <button class="btn ghost sm" id="logout-top" title="Sair">Sair</button>
       </div>
     </header>
+    <nav class="module-tabs" id="module-tabs" aria-label="Módulos do banco">
+      <button type="button" data-module="conta" data-view="overview" class="active"><i></i>Conta</button>
+      <button type="button" data-module="web3" data-view="web3"><i></i>Ativos digitais</button>
+      <button type="button" data-module="tokenizacao" data-view="tokenization"><i></i>Tokenização</button>
+      <button type="button" data-module="api" data-view="api"><i></i>API</button>
+    </nav>
     <main>
       <div class="banner" id="password-banner" hidden>
         <span>Sua senha é temporária. Troque agora para liberar transferências e aportes.</span>
@@ -916,6 +1014,221 @@
           </div>
         </div>
       </section>
+
+      <section class="view" id="view-web3">
+        <div class="module-intro purple">
+          <div>
+            <span class="eyebrow-sm">Módulo · ativos digitais</span>
+            <h2>Ativos digitais, risco e cross-chain</h2>
+            <p>Suas posições tokenizadas, o motor de risco Aladdin, crédito por score, paymaster de gas patrocinado e ordens cross-chain (CCIP e intents). Tudo com a mesma sessão do banco — sem login separado.</p>
+          </div>
+          <div class="intro-tags">
+            <span class="chip violet">edge + core</span>
+            <span class="chip ok">sessão do banco</span>
+            <span class="chip info">valores em centavos</span>
+          </div>
+        </div>
+        <div class="grid kpis five">
+          <div class="card"><div class="kpi-label">Redes</div><div class="kpi-value" id="w3-networks">—</div><div class="kpi-sub">redes tokenizadas</div></div>
+          <div class="card"><div class="kpi-label">Oráculos</div><div class="kpi-value" id="w3-feeds">—</div><div class="kpi-sub">feeds com preço</div></div>
+          <div class="card"><div class="kpi-label">Atestações</div><div class="kpi-value" id="w3-attestations">—</div><div class="kpi-sub">predicados ZK</div></div>
+          <div class="card"><div class="kpi-label">Intents</div><div class="kpi-value" id="w3-intents">—</div><div class="kpi-sub">ordens cross-chain</div></div>
+          <div class="card"><div class="kpi-label">Score Aladdin</div><div class="kpi-value" id="w3-score">—</div><div class="kpi-sub" id="w3-score-sub">sem métrica no dia</div></div>
+        </div>
+        <div class="grid cols" style="margin-top:16px">
+          <div class="stack">
+            <div class="card">
+              <div class="card-head"><div><h3>Risco Aladdin</h3><p>VaR e volatilidade por Monte Carlo determinístico.</p></div><span class="chip" id="w3-risk-chip">—</span></div>
+              <div class="list" id="w3-risk"><div class="empty">Carregando métricas…</div></div>
+              <div class="inline-note purple"><span><b>Como ler:</b> o VaR é a perda estimada no horizonte do modelo — quanto menor, mais folga a operação tem. O score vai de 0 a 10.000 e define o teto de empréstimo.</span></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Empréstimos Aladdin</h3><p>Crédito algorítmico com teto por score e progresso de pagamento.</p></div><span class="chip" id="w3-loan-count">0</span></div>
+              <div class="list" id="w3-loans"><div class="empty">Nenhum empréstimo ainda.</div></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Lanes CCIP</h3><p>Rotas cross-chain registradas, com selectors e taxa por lane.</p></div><span class="chip ok" id="w3-lanes-chip">0 ativas</span></div>
+              <div class="table-wrap"><table><thead><tr><th>Lane</th><th>Rota</th><th>Taxa</th><th>Status</th></tr></thead><tbody id="w3-lanes"><tr><td colspan="4"><div class="empty">Carregando lanes…</div></td></tr></tbody></table></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Intents</h3><p>Ordens de troca cross-chain: cotação, solver e liquidação.</p></div></div>
+              <div class="table-wrap"><table><thead><tr><th>Intent</th><th>Ativo</th><th>Unidades</th><th>Status</th><th>Criado</th></tr></thead><tbody id="w3-intents-table"><tr><td colspan="5"><div class="empty">Carregando intents…</div></td></tr></tbody></table></div>
+            </div>
+            <div class="grid grid-2">
+              <div class="card">
+                <div class="card-head"><div><h3>Ofertas DVP</h3><p>Troca atômica entre ativo e caixa.</p></div></div>
+                <div class="list" id="w3-offers"><div class="empty">Sem ofertas abertas.</div></div>
+              </div>
+              <div class="card">
+                <div class="card-head"><div><h3>Atestações ZK</h3><p>Provas de predicado com nullifier diário.</p></div></div>
+                <div class="list" id="w3-attestations-list"><div class="empty">Sem atestações.</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="card neon">
+              <div class="card-head"><div><h3>Carteira tokenizada</h3><p>Saldos por símbolo no ledger do banco.</p></div></div>
+              <div class="list" id="w3-holdings"><div class="empty">Sem posições.</div></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Paymaster</h3><p>Orçamento de gas patrocinado e consumo.</p></div></div>
+              <div class="list" id="w3-budgets"><div class="empty">Sem orçamento.</div></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Como funciona</h3><p>O caminho de uma operação.</p></div></div>
+              <div class="steps">
+                <div><strong>1. Você lê</strong>Posições, risco e orçamento vêm do ledger, com a sua sessão do banco.</div>
+                <div><strong>2. A ordem é assinada</strong>Cada intent tem digest próprio e prazo; nada executa sem cotação.</div>
+                <div><strong>3. Liquidação atômica</strong>Débito e crédito acontecem juntos. Se faltar lastro, nada é gravado.</div>
+              </div>
+              <div class="inline-note orange"><span><b>Limites honestos:</b> a prova Groth16/BN254 é gerada e verificada no core Node; o edge registra a prova como <span class="mono">CORE_NODE_REQUIRED</span>. CCIP e intents são modelados no ledger, sem roteador CCIP ao vivo.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-tokenization">
+        <div class="module-intro orange">
+          <div>
+            <span class="eyebrow-sm">Módulo · tokenização</span>
+            <h2>Tokenização com lastro, bioativos e DePIN</h2>
+            <p>Ativos com reserva 1:1, bioativos com consentimento verificável, dispositivos DePIN com prova de trabalho físico, governança DAO e agentes sob guardrails. Cada evento é ancorado numa cadeia de hashes auditável.</p>
+          </div>
+          <div class="intro-tags">
+            <span class="chip warn">lastro 1:1</span>
+            <span class="chip violet">consentimento explícito</span>
+            <span class="chip info">somente leitura aqui</span>
+          </div>
+        </div>
+
+        <div id="tok-live" hidden>
+          <div class="grid kpis five">
+            <div class="card"><div class="kpi-label">Lastro tokenizado</div><div class="kpi-value" id="tok-reserve">—</div><div class="kpi-sub" id="tok-supply">—</div></div>
+            <div class="card"><div class="kpi-label">Ativos</div><div class="kpi-value" id="tok-assets">—</div><div class="kpi-sub">emitidos com reserva</div></div>
+            <div class="card"><div class="kpi-label">Bioativos</div><div class="kpi-value" id="tok-bio">—</div><div class="kpi-sub">admitidos pela DAO</div></div>
+            <div class="card"><div class="kpi-label">DePIN</div><div class="kpi-value" id="tok-depin">—</div><div class="kpi-sub">dispositivos com PoPW</div></div>
+            <div class="card"><div class="kpi-label">Agentes</div><div class="kpi-value" id="tok-agents">—</div><div class="kpi-sub">decisões sob guardrails</div></div>
+          </div>
+          <div class="grid cols" style="margin-top:16px">
+            <div class="stack">
+              <div class="card">
+                <div class="card-head"><div><h3>Ativos tokenizados</h3><p>Emissão, transferência e resgate com lastro no ledger de dupla entrada.</p></div><span class="chip ok" id="tok-assets-chip">lastro 1:1</span></div>
+                <div class="list" id="tok-assets-list"><div class="empty">Carregando ativos…</div></div>
+              </div>
+              <div class="card">
+                <div class="card-head"><div><h3>Bioativos e royalties</h3><p>Uso pago só depois da admissão pela DAO e do consentimento registrado.</p></div><span class="chip violet">consent-bound</span></div>
+                <div class="list" id="tok-bio-list"><div class="empty">Carregando bioativos…</div></div>
+              </div>
+              <div class="card">
+                <div class="card-head"><div><h3>DePIN · Proof of Physical Work</h3><p>Hardware com atestação recebe por unidade de trabalho comprovada.</p></div><span class="chip ok">PoPW</span></div>
+                <div class="list" id="tok-devices-list"><div class="empty">Carregando dispositivos…</div></div>
+              </div>
+            </div>
+            <div class="stack">
+              <div class="card">
+                <div class="card-head"><div><h3>Governança DAO</h3><p>Propostas, votos e quórum para admitir bioativos e mudar políticas.</p></div></div>
+                <div class="list" id="tok-proposals-list"><div class="empty">Carregando propostas…</div></div>
+              </div>
+              <div class="card">
+                <div class="card-head"><div><h3>Pontes e trilhos</h3><p>Cotação e liquidação entre redes, com taxa explícita.</p></div></div>
+                <div class="list" id="tok-rails-list"><div class="empty">Carregando trilhos…</div></div>
+              </div>
+              <div class="card">
+                <div class="card-head"><div><h3>Cadeia de âncoras</h3><p>Cada evento gera um hash encadeado e auditável.</p></div><span class="chip ok" id="tok-chain-chip">—</span></div>
+                <div class="list" id="tok-anchors-list"><div class="empty">Carregando âncoras…</div></div>
+              </div>
+              <div class="card">
+                <div class="card-head"><div><h3>Como funciona</h3><p>Lastro antes da emissão.</p></div></div>
+                <div class="steps">
+                  <div><strong>1. Reserva primeiro</strong>O lastro entra no ledger antes de qualquer unidade ser emitida.</div>
+                  <div><strong>2. Consentimento verificável</strong>Bioativos guardam apenas o hash do consentimento; o texto fica com o titular.</div>
+                  <div><strong>3. Âncora de auditoria</strong>Cada operação entra numa cadeia de hashes que denuncia qualquer alteração.</div>
+                </div>
+                <div class="inline-note orange"><span><b>Onde operar:</b> a central completa, com formulários de emissão, votos e liquidação, fica em <span class="mono">/tokenization</span> no core Node. Este painel é a leitura consolidada dentro do banco.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tok-offline" class="card" hidden>
+          <div class="card-head">
+            <div><h3>Este módulo completo roda no core Node</h3><p>O endereço que você está usando é o edge Cloudflare, que opera o módulo de ativos digitais nativo. A tokenização com DAO, bioativos e DePIN está no core Node.</p></div>
+            <span class="chip warn">não disponível neste endereço</span>
+          </div>
+          <div class="steps">
+            <div><strong>1. O que já funciona aqui</strong>Ativos digitais, risco Aladdin, CCIP, intents e paymaster estão na aba <b>Ativos digitais</b>, com a sua sessão do banco.</div>
+            <div><strong>2. O que é exclusivo do core</strong>Emissão de ativos com lastro, bioativos, DePIN, DAO e pontes exigem o ledger completo do core Node.</div>
+            <div><strong>3. Como acessar</strong>Abra o banco pelo endereço do core Node (porta 8790) e entre na aba <b>Tokenização</b>; ela aparece completa automaticamente.</div>
+          </div>
+          <div class="inline-note orange"><span><b>Sem confusão:</b> não mostramos zeros falsos. Quando o módulo não existe no ambiente, explicamos o motivo e indicamos o caminho certo.</span></div>
+          <div class="view-actions" style="margin-top:16px">
+            <button class="btn primary" type="button" data-open-view="web3">Ver ativos digitais deste ambiente</button>
+            <a class="btn" href="/tokenization" target="_blank" rel="noreferrer">Abrir central completa ↗</a>
+          </div>
+        </div>
+
+        <div id="tok-error" class="card" hidden>
+          <div class="card-head"><div><h3>Não foi possível carregar a tokenização</h3><p id="tok-error-text">—</p></div></div>
+          <button class="btn" type="button" id="tok-retry">Tentar de novo</button>
+        </div>
+      </section>
+
+      <section class="view" id="view-api">
+        <div class="module-intro green">
+          <div>
+            <span class="eyebrow-sm">Módulo · documentação</span>
+            <h2>API do banco, explicada em português</h2>
+            <p>Todas as rotas do ambiente, agrupadas por área e com uma frase dizendo para que servem. O catálogo interativo abre o mesmo contrato com busca e exemplos; o JSON é para ferramentas, não para leitura.</p>
+          </div>
+          <div class="intro-tags">
+            <span class="chip ok">OpenAPI 3.1</span>
+            <span class="chip info">dinheiro em centavos</span>
+            <span class="chip">edge 1.2.0</span>
+          </div>
+        </div>
+        <div class="grid cols">
+          <div class="stack">
+            <div class="card">
+              <div class="section-title">
+                <div><h3>Endpoints por área</h3><p>Filtre por rota, área ou palavra-chave.</p></div>
+                <a class="btn sm" href="/docs" target="_blank" rel="noreferrer">Abrir catálogo interativo ↗</a>
+              </div>
+              <div class="ep-search">
+                <input id="ep-filter" placeholder="Ex.: pix, transferência, web3, admin" />
+                <span class="small muted" id="ep-count">—</span>
+              </div>
+              <div class="ep-groups" id="ep-groups"></div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="card neon">
+              <div class="card-head"><div><h3>Como autenticar</h3><p>Dois jeitos, a mesma sessão.</p></div></div>
+              <div class="steps">
+                <div><strong>Cookie de sessão</strong>O navegador envia o cookie HttpOnly. Escritas exigem o header <span class="mono">x-bank-csrf</span>.</div>
+                <div><strong>Bearer token</strong>Para integrações: <span class="mono">Authorization: Bearer &lt;token&gt;</span>, sem CSRF.</div>
+                <div><strong>Papéis</strong>Rotas de administração exigem papel ADMIN; as demais, conta ativa e aprovada.</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Contrato para máquinas</h3><p>OpenAPI 3.1 gerado pelo próprio servidor.</p></div></div>
+              <div class="list">
+                <div class="line"><div><b>Catálogo interativo</b><small>/docs</small></div><a class="btn sm" href="/docs" target="_blank" rel="noreferrer">Abrir</a></div>
+                <div class="line"><div><b>OpenAPI JSON</b><small>/openapi.json</small></div><a class="btn sm" href="/openapi.json" target="_blank" rel="noreferrer">Ver</a></div>
+              </div>
+              <div class="inline-note green"><span><b>Por que existe o JSON:</b> ele é o contrato cru, consumido por geradores de SDK e validadores. Para ler e testar, use o catálogo interativo.</span></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Convenções</h3><p>O que é igual em toda a API.</p></div></div>
+              <div class="list small">
+                <div><b class="muted">Dinheiro</b><br/>Sempre em centavos inteiros. <span class="mono">12345</span> = R$ 123,45.</div>
+                <div><b class="muted">Datas</b><br/>ISO 8601 em UTC.</div>
+                <div><b class="muted">Erros</b><br/><span class="mono">{ error: { code, message } }</span> com o status HTTP correto.</div>
+                <div><b class="muted">Idempotência</b><br/>Transferências aceitam <span class="mono">idempotency-key</span> para evitar duplicidade.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 </section>
@@ -935,6 +1248,7 @@
   const dtf = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const money = (cents) => brl.format((Number(cents) || 0) / 100);
+  const num = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
   const when = (iso) => { try { return dtf.format(new Date(iso)); } catch { return iso || '—'; } };
   const parseMoney = (raw) => {
     const text = String(raw || '').trim().replace(/(R\$|US\$|€)/gi, '').replace(/\s/g, '');
@@ -945,7 +1259,7 @@
   };
   const initials = (name) => String(name || 'X').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 
-  const state = { me: null, csrf: null, status: null, view: 'overview', statement: null, users: [], range: 30, recipient: null, rsfn: null, pix: null, pixKeyId: null, pixCode: null, credit: null, fx: null };
+  const state = { me: null, csrf: null, status: null, view: 'overview', history: [], statement: null, users: [], range: 30, recipient: null, rsfn: null, pix: null, pixKeyId: null, pixCode: null, credit: null, fx: null };
 
   function toast(message, kind = 'ok') {
     const host = $('#toast');
@@ -1032,8 +1346,8 @@
       '<dt>Início</dt><dd>' + esc(when(me.session.createdAt)) + '</dd>' +
       '<dt>Expira em</dt><dd>' + esc(when(me.session.expiresAt)) + '</dd>' +
       '<dt>Papel</dt><dd>' + esc(user.role) + '</dd>';
-    if (user.mustChangePassword) setView('security', { skipGuard: true });
-    else setView(state.view || 'overview');
+    if (user.mustChangePassword) setView('security', { skipGuard: true, push: false });
+    else setView(state.view || 'overview', { push: false });
     loadDashboard();
     if (isAdmin) loadAdmin();
   }
@@ -1051,7 +1365,9 @@
     }
     try {
       const me = await api('/v1/bank/me');
+      const initial = location.hash.replace('#', '');
       showApp(me);
+      if (initial && titles[initial]) setView(initial, { push: false });
     } catch {
       showAuth();
     }
@@ -1157,17 +1473,31 @@
   $('#logout-security').addEventListener('click', logout);
 
   // ── Navegação ──────────────────────────────────────────────────────
-  const titles = { overview: 'Visão geral', transfer: 'Transferir', pix: 'Pix', statement: 'Extrato', score: 'Score interno', credit: 'Crédito', rsfn: 'RSFN · PAG0004', security: 'Senha e sessão', admin: 'Console do administrador' };
+  const titles = { overview: 'Visão geral', transfer: 'Transferir', pix: 'Pix', statement: 'Extrato', score: 'Score interno', credit: 'Crédito', rsfn: 'RSFN · PAG0004', security: 'Senha e sessão', admin: 'Console do administrador', web3: 'Ativos digitais', tokenization: 'Tokenização', api: 'API e documentação' };
+  const moduleOf = (view) => (view === 'web3' ? 'web3' : view === 'tokenization' ? 'tokenizacao' : view === 'api' ? 'api' : 'conta');
+  const scopeOf = { conta: 'xp_bank / conta', web3: 'xp_bank / ativos digitais', tokenizacao: 'xp_bank / tokenização', api: 'xp_bank / documentação' };
   function setView(view, options = {}) {
     if (view === 'admin' && state.me && state.me.user.role !== 'ADMIN') view = 'overview';
     if (state.me && state.me.user.mustChangePassword && view !== 'security' && !options.skipGuard) {
       view = 'security';
       toast('Troque a senha temporária antes de continuar.', 'warn');
     }
+    const previous = state.view;
+    if (!options.fromHistory && options.push !== false && previous && previous !== view) {
+      state.history.push(previous);
+      if (state.history.length > 30) state.history.shift();
+    }
     state.view = view;
     $$('.view').forEach((section) => section.classList.toggle('active', section.id === 'view-' + view));
     $$('#main-nav button[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === view));
+    const module = moduleOf(view);
+    $$('#module-tabs button').forEach((button) => button.classList.toggle('active', button.dataset.module === module));
     $('#page-title').textContent = titles[view] || 'xPartner Bank';
+    $('#crumb-scope').textContent = scopeOf[module];
+    $('#back-btn').hidden = state.history.length === 0 && view === 'overview';
+    if (location.hash !== '#' + view) {
+      try { window.history.replaceState(null, '', '#' + view); } catch { /* hash indisponível */ }
+    }
     if (view === 'overview') loadDashboard();
     if (view === 'pix') loadPix();
     if (view === 'statement') loadStatement();
@@ -1175,10 +1505,300 @@
     if (view === 'credit') loadCredit();
     if (view === 'rsfn') loadRsfn();
     if (view === 'admin') loadAdmin();
+    if (view === 'web3') loadWeb3();
+    if (view === 'tokenization') loadTokenization();
+    if (view === 'api') renderApiDocs();
     if (view === 'transfer') syncTransferLimits();
   }
   $$('#main-nav button[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
+  $$('#module-tabs button').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
   $$('[data-open-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.openView)));
+  $('#back-btn').addEventListener('click', () => {
+    const previous = state.history.pop() || 'overview';
+    setView(previous, { fromHistory: true });
+  });
+  $('#ep-filter').addEventListener('input', () => renderApiDocs());
+
+  // ── Módulo: ativos digitais ───────────────────────────────────────
+  const infoLine = (title, sub, right) => '<div class="line"><div><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></div><div class="right">' + (right || '') + '</div></div>';
+  const emptyBox = (text) => '<div class="empty">' + esc(text) + '</div>';
+  const pill = (text, tone) => '<span class="chip ' + (tone || '') + '">' + esc(text) + '</span>';
+  const shortHash = (value) => String(value || '').slice(0, 16) + '…';
+
+  async function sessionExpired() {
+    try {
+      await api('/v1/bank/me');
+      return false;
+    } catch {
+      showAuth();
+      return true;
+    }
+  }
+
+  async function loadWeb3() {
+    try {
+      const [overview, aladdin, lanes, intents, offers, attestations, budgets] = await Promise.all([
+        api('/v1/web3/overview'),
+        api('/v1/web3/aladdin/overview'),
+        api('/v1/web3/ccip/lanes'),
+        api('/v1/web3/intents?limit=8'),
+        api('/v1/web3/dvp/offers?status=OPEN&limit=6'),
+        api('/v1/web3/zk/attestations'),
+        api('/v1/web3/paymaster/budgets'),
+      ]);
+      $('#w3-networks').textContent = num.format(overview.networks || 0);
+      $('#w3-feeds').textContent = num.format(overview.feeds || 0);
+      $('#w3-attestations').textContent = num.format((attestations.data || []).length);
+      $('#w3-intents').textContent = num.format((intents.data || []).length);
+
+      const risk = aladdin.risk;
+      const riskChip = $('#w3-risk-chip');
+      if (risk) {
+        const policy = aladdin.policy || {};
+        $('#w3-score').textContent = num.format(risk.creditScore || 0);
+        $('#w3-score-sub').textContent = 'VaR ' + num.format(risk.varPct || 0) + '% · vol ' + num.format(risk.volatilityPct || 0) + '%';
+        riskChip.textContent = risk.valid ? 'métrica válida' : 'métrica expirada';
+        riskChip.className = 'chip ' + (risk.valid ? 'ok' : 'warn');
+        $('#w3-risk').innerHTML =
+          infoLine('Score ' + num.format(risk.creditScore || 0) + ' / 10.000', (risk.model || 'modelo') + ' · ' + num.format(risk.sampleSize || 0) + ' amostras', pill('VaR ' + num.format(risk.varPct || 0) + '%', (risk.varBps || 0) <= (policy.maxVarBps || 0) ? 'ok' : 'err')) +
+          infoLine('Teto de crédito', 'máximo de ' + money(policy.maxLoanCents || 0) + ' por contrato', pill(policy.circuit || 'política do banco', 'violet'));
+      } else {
+        riskChip.textContent = 'sem métrica';
+        riskChip.className = 'chip warn';
+        $('#w3-score').textContent = '—';
+        $('#w3-score-sub').textContent = 'sem métrica no dia';
+        $('#w3-risk').innerHTML = emptyBox('Ainda não há métrica de risco. Rode uma simulação Aladdin para gerar VaR e score.');
+      }
+
+      const loans = (aladdin.loans && aladdin.loans.items) || [];
+      $('#w3-loan-count').textContent = loans.length;
+      $('#w3-loans').innerHTML = loans.length ? loans.map((loan) => infoLine(
+        money(loan.principalCents) + ' · ' + loan.status,
+        'saldo ' + money(loan.outstandingCents) + ' · vence ' + when(loan.dueAt),
+        pill(loan.overdue ? 'vencido' : num.format(loan.progressPct || 0) + '% pago', loan.overdue ? 'err' : 'ok'),
+      )).join('') : emptyBox('Nenhum empréstimo ainda. Um contrato exige métrica de risco válida.');
+
+      const holdings = overview.holdings || [];
+      $('#w3-holdings').innerHTML = holdings.length ? holdings.map((holding) => infoLine(
+        holding.symbol,
+        'atualizado ' + when(holding.updatedAt),
+        '<b>' + num.format(holding.units) + '</b>',
+      )).join('') : emptyBox('Sem posições tokenizadas.');
+
+      const budgetRows = budgets.data || [];
+      $('#w3-budgets').innerHTML = budgetRows.length ? budgetRows.map((budget) => infoLine(
+        budget.label || 'Orçamento',
+        'teto ' + money(budget.capCents) + ' · gasto ' + money(budget.spentCents),
+        pill(budget.status, budget.status === 'ACTIVE' ? 'ok' : 'warn'),
+      )).join('') : emptyBox('Sem orçamento de gas.');
+
+      const laneRows = lanes.data || [];
+      $('#w3-lanes-chip').textContent = laneRows.filter((lane) => lane.status === 'ACTIVE').length + ' ativas';
+      $('#w3-lanes').innerHTML = laneRows.length ? laneRows.map((lane) =>
+        '<tr><td><b>' + esc(lane.name) + '</b><div class="small muted mono">' + esc(lane.id) + '</div></td>' +
+        '<td class="mono small">' + esc(lane.sourceChainId) + ' → ' + esc(lane.destChainId) + '</td>' +
+        '<td class="small">' + num.format(lane.feeBps) + ' bps</td>' +
+        '<td>' + pill(lane.status, lane.status === 'ACTIVE' ? 'ok' : 'warn') + '</td></tr>',
+      ).join('') : '<tr><td colspan="4">' + emptyBox('Sem lanes registradas.') + '</td></tr>';
+
+      const intentRows = intents.data || [];
+      $('#w3-intents-table').innerHTML = intentRows.length ? intentRows.map((intent) =>
+        '<tr><td class="mono small">' + esc(intent.id) + '</td>' +
+        '<td>' + esc(intent.symbol) + '</td>' +
+        '<td class="small">' + num.format(intent.amountUnits) + ' → mín. ' + num.format(intent.minDestUnits) + '</td>' +
+        '<td>' + pill(intent.status, intent.status === 'SETTLED' ? 'ok' : intent.status === 'CANCELLED' ? 'err' : 'info') + '</td>' +
+        '<td class="small muted">' + esc(when(intent.createdAt)) + '</td></tr>',
+      ).join('') : '<tr><td colspan="5">' + emptyBox('Nenhum intent criado.') + '</td></tr>';
+
+      const offerRows = offers.data || [];
+      $('#w3-offers').innerHTML = offerRows.length ? offerRows.map((offer) => infoLine(
+        num.format(offer.sellUnits) + ' ' + offer.sellSymbol,
+        offer.kind === 'CASH_FOR_TOKEN' ? money(offer.cashCents) : 'troca de ativos',
+        pill(num.format(offer.feeBps) + ' bps', 'info'),
+      )).join('') : emptyBox('Sem ofertas abertas.');
+
+      const attestationRows = attestations.data || [];
+      $('#w3-attestations-list').innerHTML = attestationRows.length ? attestationRows.map((attestation) => infoLine(
+        attestation.claimType + ' ' + attestation.predicate + ' ' + num.format(attestation.threshold),
+        'expira ' + when(attestation.expiresAt),
+        pill(attestation.status, attestation.status === 'ACTIVE' ? 'ok' : 'warn'),
+      )).join('') : emptyBox('Sem atestações registradas.');
+    } catch (error) {
+      if (error.status === 401 && await sessionExpired()) return;
+      const detail = error.status === 401
+        ? 'Os dados de ativos digitais são servidos pela versão publicada do banco. Neste servidor local, o módulo responde apenas com credencial de integração.'
+        : (error.message || 'Falha ao carregar ativos digitais.');
+      ['w3-risk', 'w3-loans', 'w3-holdings', 'w3-budgets', 'w3-offers', 'w3-attestations-list'].forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) element.innerHTML = emptyBox(detail);
+      });
+      const lanesBody = document.getElementById('w3-lanes');
+      if (lanesBody) lanesBody.innerHTML = '<tr><td colspan="4">' + emptyBox(detail) + '</td></tr>';
+      const intentsBody = document.getElementById('w3-intents-table');
+      if (intentsBody) intentsBody.innerHTML = '<tr><td colspan="5">' + emptyBox(detail) + '</td></tr>';
+      toast(detail, error.status === 401 ? 'warn' : 'err');
+    }
+  }
+
+  // ── Módulo: tokenização ───────────────────────────────────────────
+  async function loadTokenization() {
+    const live = $('#tok-live');
+    const offline = $('#tok-offline');
+    const errorBox = $('#tok-error');
+    try {
+      const [overview, assets, bio, devices, proposals, rails, anchors] = await Promise.all([
+        api('/v1/tokenization/overview'),
+        api('/v1/tokenization/assets'),
+        api('/v1/tokenization/bio'),
+        api('/v1/tokenization/depin/devices'),
+        api('/v1/tokenization/dao/proposals'),
+        api('/v1/tokenization/bridges/rails'),
+        api('/v1/tokenization/anchors?limit=12'),
+      ]);
+      offline.hidden = true;
+      errorBox.hidden = true;
+      live.hidden = false;
+
+      $('#tok-reserve').textContent = overview.assets.reserveFormatted;
+      $('#tok-supply').textContent = num.format(overview.assets.supplyUnits || 0) + ' unidades';
+      $('#tok-assets').textContent = num.format(overview.assets.count || 0);
+      $('#tok-bio').textContent = num.format(overview.bio.admitted || 0) + ' / ' + num.format(overview.bio.total || 0);
+      $('#tok-depin').textContent = num.format(overview.depin.devices || 0);
+      $('#tok-agents').textContent = num.format(overview.agents.decisions || 0);
+
+      const assetRows = assets.data || [];
+      $('#tok-assets-chip').textContent = assetRows.length + ' ativos';
+      $('#tok-assets-list').innerHTML = assetRows.length ? assetRows.map((asset) => infoLine(
+        asset.symbol + ' · ' + asset.name,
+        'lastro ' + asset.backingPerUnitFormatted + '/un · reserva ' + asset.reserveFormatted + ' · supply ' + num.format(asset.supplyUnits) + '/' + num.format(asset.maxUnits),
+        pill((asset.kind || '') + ' · ' + (asset.status || ''), asset.status === 'ACTIVE' ? 'ok' : 'warn'),
+      )).join('') : emptyBox('Nenhum ativo emitido ainda.');
+
+      const bioRows = bio.data || [];
+      $('#tok-bio-list').innerHTML = bioRows.length ? bioRows.map((item) => infoLine(
+        item.name,
+        'royalty ' + (item.royaltyBps / 100).toFixed(2) + '% · pago ' + item.royaltyPaidFormatted + ' · consent ' + shortHash(item.consentHash),
+        pill(item.status, item.status === 'ADMITTED' ? 'ok' : 'warn'),
+      )).join('') : emptyBox('Nenhum bioativo registrado.');
+
+      const deviceRows = devices.data || [];
+      $('#tok-devices-list').innerHTML = deviceRows.length ? deviceRows.map((device) => infoLine(
+        device.model,
+        'capacidade ' + num.format(device.capacityUnits) + ' · trabalho ' + num.format(device.rewardUnits) + ' un · recompensas ' + device.rewardFormatted,
+        pill(device.status, device.status === 'ACTIVE' ? 'ok' : 'warn'),
+      )).join('') : emptyBox('Nenhum dispositivo registrado.');
+
+      const proposalRows = proposals.data || [];
+      $('#tok-proposals-list').innerHTML = proposalRows.length ? proposalRows.map((proposal) => infoLine(
+        proposal.title,
+        num.format(proposal.votesFor) + ' a favor · ' + num.format(proposal.votesAgainst) + ' contra · quórum ' + num.format(proposal.quorumUnits),
+        pill(proposal.status, proposal.status === 'APPROVED' ? 'ok' : proposal.status === 'OPEN' ? 'warn' : 'err'),
+      )).join('') : emptyBox('Nenhuma proposta de governança.');
+
+      const railRows = rails.data || [];
+      $('#tok-rails-list').innerHTML = railRows.length ? railRows.map((rail) => infoLine(
+        rail.label,
+        rail.rate,
+        (rail.feeBps / 100).toFixed(2) + '% · mín. ' + money(rail.minFeeCents),
+      )).join('') : emptyBox('Nenhum trilho de ponte configurado.');
+
+      const anchorRows = (anchors.data || []).slice(0, 12);
+      const chain = anchors.status && anchors.status.chain;
+      const chainOk = !!(chain && chain.valid);
+      $('#tok-chain-chip').textContent = chainOk ? 'íntegra' : 'atenção';
+      $('#tok-chain-chip').className = 'chip ' + (chainOk ? 'ok' : 'warn');
+      $('#tok-anchors-list').innerHTML = anchorRows.length ? anchorRows.map((anchor) => infoLine(
+        'Bloco #' + anchor.height,
+        when(anchor.createdAt),
+        '<span class="mono small">' + esc(shortHash(anchor.anchorHash)) + '</span>',
+      )).join('') : emptyBox('Cadeia de âncoras vazia.');
+    } catch (error) {
+      if (error.status === 401 && await sessionExpired()) return;
+      if (error.status === 404 || error.status === 405) {
+        live.hidden = true;
+        errorBox.hidden = true;
+        offline.hidden = false;
+        return;
+      }
+      live.hidden = true;
+      offline.hidden = true;
+      errorBox.hidden = false;
+      $('#tok-error-text').textContent = error.message || 'Falha ao carregar a tokenização.';
+    }
+  }
+  $('#tok-retry').addEventListener('click', loadTokenization);
+
+  // ── Módulo: documentação da API ───────────────────────────────────
+  const API_GROUPS = [
+    { title: 'Conta e sessão', desc: 'Cadastro, login, perfil, extrato e transferências internas.', items: [
+      ['GET', '/v1/bank/status', 'Estado do servidor, modo demo e política de cadastro.'],
+      ['POST', '/v1/bank/auth/register', 'Abre o cadastro; fica pendente até aprovação do administrador.'],
+      ['POST', '/v1/bank/auth/login', 'Entra com e-mail ou CPF/CNPJ e senha; cria a sessão.'],
+      ['POST', '/v1/bank/auth/logout', 'Encerra a sessão atual.'],
+      ['GET', '/v1/bank/me', 'Perfil, conta, sessão e token CSRF.'],
+      ['GET', '/v1/bank/statement', 'Extrato paginado com saldo após cada partida.'],
+      ['POST', '/v1/bank/transfers', 'Transferência interna com dupla entrada e idempotência.'],
+      ['GET', '/v1/bank/statement.csv', 'Exporta o extrato em CSV.'],
+    ] },
+    { title: 'Pix', desc: 'Chaves do titular e BR Code EMV com CRC16.', items: [
+      ['GET', '/v1/bank/pix/keys', 'Lista as chaves Pix da conta.'],
+      ['POST', '/v1/bank/pix/keys', 'Registra uma chave do próprio titular.'],
+      ['POST', '/v1/bank/pix/keys/evp', 'Gera uma chave aleatória (EVP).'],
+    ] },
+    { title: 'Crédito', desc: 'Score interno, simulação e contratos com capital da tesouraria.', items: [
+      ['GET', '/v1/bank/credit/score', 'Score, faixa e limite sugerido.'],
+      ['POST', '/v1/bank/credit/quote', 'Simula antecipação ou empréstimo sem contratar.'],
+      ['GET', '/v1/bank/credit/contracts', 'Contratos, parcelas e saldo devedor.'],
+      ['POST', '/v1/bank/credit/contracts', 'Contrata crédito com a taxa travada.'],
+      ['GET', '/v1/bank/credit/contracts.csv', 'Exporta os contratos em CSV.'],
+    ] },
+    { title: 'RSFN · PAG0004', desc: 'Remessa interbancária no padrão do Banco Central.', items: [
+      ['GET', '/v1/bank/rsfn/config', 'Estado do conector RSFN e requisitos.'],
+      ['POST', '/v1/bank/rsfn/validate', 'Valida XML PAG0004 sem movimentar saldo.'],
+      ['POST', '/v1/bank/rsfn/transfers', 'Cria a remessa e lança na câmara de compensação.'],
+      ['GET', '/v1/bank/rsfn/messages', 'Mensagens e retorno da câmara.'],
+      ['GET', '/v1/bank/rsfn/pag0004.xsd', 'Contrato XSD do PAG0004.'],
+    ] },
+    { title: 'Ativos digitais · Web3', desc: 'DVP, oráculo, ZK, agentes, paymaster e risco Aladdin.', items: [
+      ['GET', '/v1/web3/overview', 'Redes, feeds, posições, DVP, ZK, agentes e paymaster.'],
+      ['GET', '/v1/web3/aladdin/overview', 'Risco, política e empréstimos do titular.'],
+      ['POST', '/v1/web3/aladdin/risk/simulate', 'Roda Monte Carlo determinístico e grava a métrica.'],
+      ['GET', '/v1/web3/dvp/offers', 'Ofertas de troca atômica entre ativo e caixa.'],
+      ['GET', '/v1/web3/zk/attestations', 'Atestações de predicado e nullifier diário.'],
+      ['GET', '/v1/web3/paymaster/budgets', 'Orçamentos de gas patrocinado.'],
+      ['GET', '/v1/web3/agents/sessions', 'Sessões de agentes com política e limite por ação.'],
+    ] },
+    { title: 'Cross-chain', desc: 'Lanes CCIP, liquidez P2P e intents liquidados no ledger.', items: [
+      ['GET', '/v1/web3/ccip/lanes', 'Rotas cross-chain com selectors e taxa.'],
+      ['GET', '/v1/web3/ccip/liquidity', 'Liquidez disponível por lane.'],
+      ['GET', '/v1/web3/ccip/messages', 'Mensagens CCIP modeladas no ledger.'],
+      ['GET', '/v1/web3/intents', 'Ordens cross-chain e seus estados.'],
+      ['POST', '/v1/web3/intents', 'Cria um intent com prazo e orçamento de taxa.'],
+      ['POST', '/v1/web3/intents/{id}/execute', 'Executa o intent depois de escolher o solver.'],
+    ] },
+    { title: 'Administração', desc: 'Aprovação de cadastros, bloqueios e auditoria. Exige papel ADMIN.', items: [
+      ['GET', '/v1/bank/admin/overview', 'Indicadores gerais do banco.'],
+      ['GET', '/v1/bank/admin/users', 'Busca e filtra usuários por status.'],
+      ['GET', '/v1/bank/admin/audit', 'Trilha de auditoria recente.'],
+    ] },
+  ];
+
+  function renderApiDocs() {
+    const host = $('#ep-groups');
+    if (!host) return;
+    const query = ($('#ep-filter').value || '').trim().toLowerCase();
+    let total = 0;
+    host.innerHTML = API_GROUPS.map((group) => {
+      const items = group.items.filter(([method, path, description]) => !query || (group.title + ' ' + method + ' ' + path + ' ' + description).toLowerCase().includes(query));
+      if (!items.length) return '';
+      total += items.length;
+      return '<div class="ep-group"><h3>' + esc(group.title) + ' <span>' + items.length + ' rotas</span></h3><p>' + esc(group.desc) + '</p><div class="ep-list">' +
+        items.map(([method, path, description]) =>
+          '<div class="ep"><span class="m m-' + method.toLowerCase() + '">' + method + '</span><div><code>' + esc(path) + '</code><small>' + esc(description) + '</small></div></div>',
+        ).join('') + '</div></div>';
+    }).join('') || emptyBox('Nenhuma rota encontrada para esse filtro.');
+    $('#ep-count').textContent = total + ' rotas';
+  }
 
   // ── Dashboard ──────────────────────────────────────────────────────
   function currentAccount() { return state.me && state.me.user ? state.me.user.account : null; }

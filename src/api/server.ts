@@ -618,7 +618,21 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada.', requestId: request.id } });
   });
 
-  const requireRead = (request: FastifyRequest) => authenticateBearer(config, request, 'demo:read');
+  // Leitura dos módulos no próprio banco usa a sessão; escrita continua exigindo Bearer.
+  const requireRead = (request: FastifyRequest) => {
+    const authorization = String(request.headers.authorization ?? '');
+    if (authorization.toLowerCase().startsWith('bearer ')) return authenticateBearer(config, request, 'demo:read');
+    if (request.headers.cookie) {
+      try {
+        const auth = ctx.bankAuth.authenticate(request);
+        const now = Math.floor(Date.now() / 1000);
+        return { sub: auth.user.id, scope: 'demo:read', merchantId: auth.user.id, exp: now + 60, iat: now };
+      } catch {
+        // sem sessão válida: cai no erro padrão de credencial de integração
+      }
+    }
+    return authenticateBearer(config, request, 'demo:read');
+  };
   const requireWrite = (request: FastifyRequest) => authenticateBearer(config, request, 'demo:write');
   const assertDemo = (): void => {
     if (!config.demoMode) throw Errors.notFound();
@@ -2253,10 +2267,13 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   // ── Dashboard ─────────────────────────────────────────────────────────────
   let dashboardHtml: string | undefined;
   let tokenizationHtml: string | undefined;
+  let web3Html: string | undefined;
+  let docsHtml: string | undefined;
   let appHtml: string | undefined;
   let bankHtml: string | undefined;
   let coreHtml: string | undefined;
   let checkoutHtml: string | undefined;
+  const swaggerAssets = new Map<string, string>();
   app.get('/', async (request, reply) => {
     if (!config.demoMode) {
       reply.type('text/html; charset=utf-8').send(OPERATIONAL_LANDING);
@@ -2274,6 +2291,41 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       tokenizationHtml = readFileSync(new URL('../../public/tokenization.html', import.meta.url), 'utf8');
     }
     reply.type('text/html; charset=utf-8').send(tokenizationHtml);
+  });
+
+  app.get('/tokenization', async (request, reply) => {
+    assertDemo();
+    if (!tokenizationHtml) {
+      tokenizationHtml = readFileSync(new URL('../../public/tokenization.html', import.meta.url), 'utf8');
+    }
+    reply.type('text/html; charset=utf-8').send(tokenizationHtml);
+  });
+
+  app.get('/web3', async (request, reply) => {
+    assertDemo();
+    if (!web3Html) {
+      web3Html = readFileSync(new URL('../../public/web3.html', import.meta.url), 'utf8');
+    }
+    reply.type('text/html; charset=utf-8').send(web3Html);
+  });
+
+  app.get('/docs', async (request, reply) => {
+    if (!docsHtml) {
+      docsHtml = readFileSync(new URL('../../public/docs.html', import.meta.url), 'utf8');
+    }
+    reply.type('text/html; charset=utf-8').send(docsHtml);
+  });
+
+  app.get('/vendor/swagger/:file', async (request, reply) => {
+    const { file } = request.params as { file: string };
+    if (file !== 'swagger-ui.css' && file !== 'swagger-ui-bundle.js') {
+      reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Arquivo não encontrado.', requestId: request.id } });
+      return;
+    }
+    if (!swaggerAssets.has(file)) {
+      swaggerAssets.set(file, readFileSync(new URL(`../../public/vendor/swagger/${file}`, import.meta.url), 'utf8'));
+    }
+    reply.type(file.endsWith('.css') ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8').send(swaggerAssets.get(file));
   });
 
   app.get('/app', async (request, reply) => {

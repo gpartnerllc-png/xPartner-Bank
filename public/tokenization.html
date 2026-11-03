@@ -201,11 +201,109 @@
   .tag{background:rgba(0,255,163,.04)!important;border-color:var(--line)!important}
   .tag.ok{color:#00ffa3!important;border-color:rgba(0,255,163,.3)!important;background:rgba(0,255,163,.07)!important}
 </style>
+<style id="xp-theme-light">
+  /* Identidade clara do banco: roxo, laranja, azul e verde */
+  :root{
+    --bg:#f7f9fd;--bg-2:#f1f5f9;--panel:#ffffff;--panel-2:#fbfcff;--panel-3:#eef2ff;
+    --line:rgba(15,23,42,.10);--line-strong:rgba(15,23,42,.18);
+    --text:#0f172a;--muted:#475569;--dim:#64748b;
+    --mint:#0e9f6e;--lime:#f97316;--amber:#b45309;--red:#dc2626;--blue:#2563eb;--violet:#7c3aed;
+  }
+  html{background:#eef2f8}
+  body{color:var(--text)!important;background-color:#f7f9fd!important;background-image:
+    radial-gradient(1100px 680px at 88% -14%,rgba(249,115,22,.10),transparent 60%),
+    radial-gradient(980px 640px at -8% 4%,rgba(37,99,235,.10),transparent 62%),
+    radial-gradient(860px 580px at 76% 52%,rgba(124,58,237,.08),transparent 64%),
+    radial-gradient(900px 660px at 50% 112%,rgba(16,185,129,.09),transparent 62%),
+    linear-gradient(180deg,#fbfcff 0%,#f4f7fd 48%,#edf3fa 100%)!important;background-attachment:fixed!important}
+  ::selection{background:rgba(249,115,22,.22);color:#0f172a}
+  a{color:#2563eb}
+  .topbar{background:rgba(251,252,255,.94)!important;border-bottom-color:var(--line)!important;backdrop-filter:blur(18px)}
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#334155;
+    background:#fff;border:1px solid var(--line-strong);border-radius:10px;padding:9px 12px;white-space:nowrap}
+  .back-link:hover{background:#f1f5f9;color:#0f172a}
+  .mark{background:linear-gradient(135deg,#ff7a00,#ffa040 52%,#0e9f6e)!important;color:#071022!important;box-shadow:0 10px 24px rgba(249,115,22,.22)!important}
+  .brand h1{color:#0f172a}.brand h1 span{color:#0e9f6e}
+  .brand p{color:#64748b}
+  .nav{border-color:var(--line)!important;background:#fff!important;box-shadow:0 6px 18px rgba(15,23,42,.05)}
+  .nav a{color:#475569}
+  .nav a:hover{background:#eef6ff!important;color:#0f172a!important}
+  .nav a.active{background:linear-gradient(135deg,#ea580c,#f59e0b)!important;color:#fff!important;box-shadow:0 8px 20px rgba(249,115,22,.25)!important}
+  .live{border-color:rgba(14,159,110,.28)!important;background:#fff!important;color:#475569!important}
+  .dot{background:#0e9f6e!important;box-shadow:none!important}
+  .dot.off{background:#dc2626!important}
+  .merchant{border-left-color:var(--line)!important}
+  .avatar{background:#eef6ff!important;color:#2563eb!important;border-color:var(--line-strong)!important}
+  .merchant strong{color:#0f172a}.merchant small{color:#64748b}
+  .hero h2{color:#0f172a}.hero h2 em{color:#c2410c}
+  .hero p{color:#475569}
+  .stamp{color:#64748b!important}.stamp b{color:#0f172a}
+  .card{background:#fff!important;border-color:var(--line)!important;box-shadow:0 20px 44px -34px rgba(15,23,42,.4)!important}
+  .card::before{background:linear-gradient(140deg,rgba(37,99,235,.035),transparent 40%)!important}
+  .card.accent{background:linear-gradient(135deg,#fff7ed,#fff 62%)!important;border-color:rgba(249,115,22,.30)!important}
+  .card.accent .icon{background:#ffedd5!important;border-color:rgba(249,115,22,.28)!important}
+  .card.accent .icon svg{stroke:#c2410c!important}
+  .kpi-label{color:#64748b!important}
+  .kpi-value{color:#0f172a!important}
+  .kpi-sub{color:#64748b!important}.kpi-sub b{color:#0e9f6e!important}
+  .icon{background:#eff5ff!important;border-color:var(--line)!important}
+  .icon svg{stroke:#2563eb!important}
+  .card-head h3{color:#0f172a}.card-head p{color:#64748b}
+  .tag{color:#475569!important;border-color:var(--line-strong)!important;background:#f8fafc!important}
+  .tag.ok{color:#047857!important;border-color:rgba(14,159,110,.3)!important;background:#ecfdf5!important}
+  .tag.warn{color:#b45309!important;border-color:rgba(180,83,9,.3)!important;background:#fffbeb!important}
+  .tag.bad{color:#b91c1c!important;border-color:rgba(220,38,38,.3)!important;background:#fef2f2!important}
+  .tag.violet{color:#6d28d9!important;border-color:rgba(124,58,237,.28)!important;background:#f5f3ff!important}
+  .btn{background:linear-gradient(135deg,#ea580c,#f59e0b)!important;border-color:transparent!important;color:#fff!important;box-shadow:0 10px 24px rgba(249,115,22,.22)}
+  .btn.ghost{background:#fff!important;color:#334155!important;border-color:var(--line-strong)!important;box-shadow:none}
+  .btn.ghost:hover{background:#f1f5f9!important}
+  .btn.danger{background:#fef2f2!important;color:#b91c1c!important;border-color:rgba(220,38,38,.3)!important;box-shadow:none}
+  .field label{color:#64748b}
+  .field input,.field select,.field textarea{background:#fff!important;border-color:var(--line-strong)!important;color:#0f172a!important}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(249,115,22,.55)!important;box-shadow:0 0 0 3px rgba(249,115,22,.12)!important}
+  .field .hint{color:#64748b}
+  .asset{background:#fbfcff!important;border-color:var(--line)!important}
+  .asset .sym{color:#c2410c!important}
+  .asset h4{color:#0f172a}
+  .asset .meta{color:#64748b!important}.asset .meta b{color:#0f172a!important}
+  .asset .hash{color:#94a3b8!important}
+  .rail{background:#fbfcff!important;border-color:var(--line)!important}
+  .rail .rrate{color:#64748b!important}
+  .rail .rfee{color:#0e9f6e!important}
+  .table th{color:#64748b!important;border-bottom-color:var(--line)!important}
+  .table td{color:#475569!important;border-bottom-color:rgba(15,23,42,.06)!important}
+  .table td b{color:#0f172a!important}
+  .mono{color:#475569}
+  .progress{background:#eef2f7!important}
+  .progress i{background:linear-gradient(90deg,#0e9f6e,#34d399)!important}
+  .progress.reject i{background:linear-gradient(90deg,#dc2626,#f59e0b)!important}
+  .votes{color:#64748b!important}
+  .zk-out{background:#f8fafc!important;border-color:var(--line)!important;color:#334155!important}
+  .anchor{color:#64748b!important;border-bottom-color:rgba(15,23,42,.06)!important}
+  .anchor b{color:#0e9f6e!important}
+  .empty{border-color:var(--line-strong)!important;color:#64748b!important;background:#fbfcff}
+  .banner{background:#ecfdf5!important;border-color:rgba(14,159,110,.28)!important;color:#334155!important}
+  .banner b{color:#0f172a}
+  #edgeNotice{background:#fff7ed!important;border-color:rgba(249,115,22,.35)!important;color:#334155!important}
+  #edgeNotice a{color:#c2410c!important;font-weight:700}
+  .toast{background:#fff!important;border-color:rgba(14,159,110,.32)!important;color:#0f172a!important;box-shadow:0 18px 44px rgba(15,23,42,.16)!important}
+  .toast.err{border-color:rgba(220,38,38,.35)!important}
+  .toast.warn{border-color:rgba(180,83,9,.35)!important}
+  .toast small{color:#64748b!important}
+  .foot{color:#64748b!important}
+  .foot a{color:#475569!important}
+  body.xp-offline .kpis,body.xp-offline .layout{display:none!important}
+  @media(max-width:760px){
+    .nav{order:3;width:100%;justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap}
+    .nav a{white-space:nowrap}
+  }
+</style>
 
 </head>
 <body>
 <div class="shell">
   <header class="topbar">
+    <a class="back-link" href="/bank" title="Voltar ao banco">← Banco</a>
     <div class="brand">
       <div class="mark">X</div>
       <div>
@@ -214,16 +312,10 @@
       </div>
     </div>
     <nav class="nav">
-      <a href="/">Core bancário</a>
-      <a href="/app">Aplicativo</a>
-      <a href="/web3">Web3</a>
-      <a href="#ativos" class="active">Ativos</a>
-      <a href="#bio">Bioativos</a>
-      <a href="#depin">DePIN</a>
-      <a href="#dao">DAO</a>
-      <a href="#agentes">Agentes</a>
-      <a href="#pontes">Pontes</a>
-      <a href="#ancoras">Âncoras</a>
+      <a href="/bank">Conta</a>
+      <a href="/bank#web3">Ativos digitais</a>
+      <a href="/tokenization" class="active">Tokenização</a>
+      <a href="/bank#api">API</a>
     </nav>
     <div class="top-right">
       <div class="live"><span class="dot" id="liveDot"></span><span id="liveLabel">conectando</span></div>
@@ -253,8 +345,8 @@
     <span class="tag violet" id="trialTag">ledger —</span>
   </div>
 
-  <div class="banner" id="edgeNotice" style="display:none;border-color:rgba(255,122,0,.35);background:rgba(255,122,0,.08)">
-    <span><b>Painel do core Node.</b> Este domínio edge não expõe <span class="mono">/v1/tokenization</span>; as integrações Web3 nativas do edge estão no <a href="/web3" style="color:#ffa040;font-weight:700">painel Web3</a>.</span>
+  <div class="banner" id="edgeNotice" style="display:none">
+    <span><b>Esta central completa roda no núcleo Node do banco.</b> Na versão publicada no edge, os dados consolidados ficam nas abas <a href="/bank#web3">Ativos digitais</a> e <a href="/bank#tokenization">Tokenização</a> dentro do banco.</span>
   </div>
 
   <section class="grid kpis">
@@ -1030,7 +1122,8 @@
       $('liveLabel').textContent = 'offline';
       const notice = $('edgeNotice');
       if (notice) notice.style.display = 'flex';
-      toast('Não foi possível iniciar a demo', 'err', error.message);
+      document.body.classList.add('xp-offline');
+      toast('Central completa no núcleo Node', 'warn', 'Nesta versão publicada, a leitura consolidada fica nas abas do banco.');
     }
   }
 
