@@ -1050,6 +1050,7 @@
 
   const state = {
     token: '',
+    operator: false,
     merchant: null,
     terminalId: '',
     customers: [],
@@ -1075,6 +1076,30 @@
     }
     return body;
   }
+
+  /**
+   * O token público apenas mostra e cadastra. Para dar baixa em cobrança é
+   * preciso a sessão de administrador do banco, que entrega um token de operador.
+   */
+  async function upgradeToOperatorToken() {
+    try {
+      const me = await fetch('/v1/bank/me', { credentials: 'same-origin' }).then((res) => (res.ok ? res.json() : null));
+      if (!me || !me.user || me.user.role !== 'ADMIN') return false;
+      const granted = await fetch('/v1/bank/admin/merchant/simulator-token', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', 'x-bank-csrf': me.csrfToken || '' },
+      }).then((res) => (res.ok ? res.json() : null));
+      if (!granted || !granted.token) return false;
+      state.token = granted.token;
+      state.operator = true;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const isMissingOperatorScope = (error) => /demo:simulate/.test(String(error && error.message || ''));
 
   function toast(message, kind = 'ok', detail = '') {
     const el = document.createElement('div');
@@ -2221,7 +2246,18 @@
         if (state.loaded.has('overview')) loadOverview().catch(() => {});
       }
     } catch (error) {
-      toast('Operação não concluída', 'err', error.message);
+      if (isMissingOperatorScope(error)) {
+        const released = state.operator ? false : await upgradeToOperatorToken();
+        toast(
+          released ? 'Operador do banco liberado' : 'Baixa precisa do administrador',
+          released ? 'ok' : 'warn',
+          released
+            ? 'Clique em "Dar baixa" outra vez para registrar o pagamento.'
+            : 'Entre no banco como administrador em /bank para poder dar baixa em cobranças.',
+        );
+      } else {
+        toast('Operação não concluída', 'err', error.message);
+      }
     } finally {
       action.disabled = false;
     }
@@ -2533,6 +2569,7 @@
       state.token = info.token;
       state.merchant = info.merchant;
       state.terminalId = info.terminalId;
+      if (info.canSimulate === false) await upgradeToOperatorToken();
       paintWorkspace(info.merchant);
       await loadCustomers();
       const initial = (location.hash || '#overview').replace('#', '');

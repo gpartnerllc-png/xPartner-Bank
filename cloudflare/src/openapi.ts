@@ -773,6 +773,17 @@ export const openapi = {
         },
       },
     },
+    '/v1/bank/admin/merchant/simulator-token': {
+      post: {
+        tags: ['Administração'],
+        summary: 'Token de operador da maquininha, entregue ao admin autenticado (duração 1 hora)',
+        description:
+          'O token público do painel lê e grava cadastros do estabelecimento, mas não fabrica lançamento. Este token acrescenta o escopo demo:simulate, exigido por venda simulada, pagamento de boleto, cobrança Pix e liquidação. Somente o administrador logado no banco recebe.',
+        security: auth,
+        parameters: [csrf],
+        responses: { '200': ok('Token de operador'), '403': erro('Requer admin') },
+      },
+    },
     '/v1/bank/admin/users/{id}': {
       get: {
         tags: ['Administração'],

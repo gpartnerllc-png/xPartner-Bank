@@ -28,6 +28,20 @@ import { DoDb, type SqlStorageLike } from './sqlite.ts';
 import { PURGE_CONFIRM_PHRASE, previewPurge, purgeDemoData } from '../../../src/modules/demo-purge.ts';
 
 const TOKEN_TTL_SECONDS = 86_400;
+const SIMULATOR_TOKEN_TTL_SECONDS = 3_600;
+
+/**
+ * Escopo entregue a quem apenas abre a página: lê o painel e grava o que é do
+ * próprio estabelecimento (cliente, cobrança, assinatura). Não fabrica venda.
+ */
+const PUBLIC_SCOPE = 'demo:read demo:write';
+
+/**
+ * Escopo do operador autenticado. Só o Worker entrega este token, depois de
+ * conferir a sessão de administrador, e só ele alimenta a maquininha de
+ * demonstração. Um visitante anônimo não consegue injetar lançamento falso.
+ */
+const OPERATOR_SCOPE = 'demo:read demo:write demo:simulate';
 
 interface MerchantServices {
   transactions: TransactionService;
@@ -274,24 +288,26 @@ export class MerchantCore {
     });
   }
 
-  private issueToken(merchantId: string): string {
-    return signToken(
-      { sub: merchantId, merchantId, scope: 'demo:read demo:write' },
-      this.tokenSecret,
-      TOKEN_TTL_SECONDS,
-    );
+  private issueToken(merchantId: string, scope: string, ttlSeconds: number): string {
+    return signToken({ sub: merchantId, merchantId, scope }, this.tokenSecret, ttlSeconds);
   }
 
   private authenticate(request: Request, write = false): Claims {
+    return this.authenticateScope(request, write ? 'demo:write' : 'demo:read');
+  }
+
+  /** Token do operador autenticado: único que pode fabricar lançamento na maquininha. */
+  private authenticateSimulator(request: Request): Claims {
+    return this.authenticateScope(request, 'demo:simulate');
+  }
+
+  private authenticateScope(request: Request, required: string): Claims {
     const header = request.headers.get('authorization') ?? '';
     if (!header.startsWith('Bearer ')) throw Errors.unauthorized('Token Bearer ausente.');
     const claims = verifyToken(header.slice('Bearer '.length).trim(), this.tokenSecret);
     const scopes = String(claims.scope).split(' ');
-    if (write && !scopes.includes('demo:write') && !scopes.includes('*')) {
-      throw Errors.forbidden('Escopo demo:write ausente.');
-    }
-    if (!write && !scopes.includes('demo:read') && !scopes.includes('*')) {
-      throw Errors.forbidden('Escopo demo:read ausente.');
+    if (!scopes.includes(required) && !scopes.includes('*')) {
+      throw Errors.forbidden(`Escopo ${required} ausente.`);
     }
     return { merchantId: claims.merchantId, scope: claims.scope };
   }
@@ -335,6 +351,21 @@ export class MerchantCore {
       return json(purgeDemoData(db, { actor: String(payload.actor ?? 'edge:worker') }));
     }
 
+    // Token de operador para a maquininha: o Worker entrega depois de conferir
+    // a sessão de administrador. Este caminho não tem URL pública.
+    if (path === '/internal/admin/simulator-token' && method === 'POST') {
+      const payload = await body();
+      const actor = String(payload.actor ?? 'edge:worker');
+      return json({
+        token: this.issueToken(DEMO_MERCHANT_ID, OPERATOR_SCOPE, SIMULATOR_TOKEN_TTL_SECONDS),
+        tokenType: 'Bearer',
+        expiresIn: SIMULATOR_TOKEN_TTL_SECONDS,
+        scopes: OPERATOR_SCOPE,
+        issuedTo: actor,
+        merchant: publicMerchant(db, DEMO_MERCHANT_ID),
+      });
+    }
+
     // ── Sessão demo ────────────────────────────────────────────────────────
     if (method === 'POST' && path === '/v1/auth/demo') {
       assertDemo();
@@ -343,9 +374,11 @@ export class MerchantCore {
       const merchant = publicMerchant(db, merchantId);
       if (!merchant) throw Errors.notFound('Estabelecimento não encontrado.');
       return json({
-        token: this.issueToken(merchantId),
+        token: this.issueToken(merchantId, PUBLIC_SCOPE, TOKEN_TTL_SECONDS),
         tokenType: 'Bearer',
         expiresIn: TOKEN_TTL_SECONDS,
+        scopes: PUBLIC_SCOPE,
+        canSimulate: false,
         merchant,
       });
     }
@@ -358,9 +391,11 @@ export class MerchantCore {
         .prepare('SELECT id, serial, model, status FROM terminals WHERE merchant_id = ?')
         .all(DEMO_MERCHANT_ID);
       return json({
-        token: this.issueToken(DEMO_MERCHANT_ID),
+        token: this.issueToken(DEMO_MERCHANT_ID, PUBLIC_SCOPE, TOKEN_TTL_SECONDS),
         tokenType: 'Bearer',
         expiresIn: TOKEN_TTL_SECONDS,
+        scopes: PUBLIC_SCOPE,
+        canSimulate: false,
         merchant,
         terminals,
         acquirers: listAcquirers(db).map((acquirer) => ({
@@ -384,7 +419,7 @@ export class MerchantCore {
 
     if (method === 'POST' && path === '/v1/demo/sales') {
       assertDemo();
-      this.authenticate(request, true);
+      this.authenticateSimulator(request);
       const payload = await body();
       const terminalId = (payload.terminalId as string | undefined) ?? DEMO_TERMINAL_ID;
       const saleMethod = String(payload.method ?? '').toUpperCase();
@@ -406,7 +441,7 @@ export class MerchantCore {
 
     if (method === 'POST' && path === '/v1/demo/pix') {
       assertDemo();
-      this.authenticate(request, true);
+      this.authenticateSimulator(request);
       const payload = await body();
       if (!payload.amountCents) throw Errors.validation('amountCents é obrigatório.');
       return json(
@@ -502,7 +537,7 @@ export class MerchantCore {
       segments[4] === 'simulate-payment'
     ) {
       assertDemo();
-      const claims = this.authenticate(request, true);
+      const claims = this.authenticateSimulator(request);
       const current = services.pix.getCharge(segments[3]);
       assertMerchantScope(claims, current.transaction.merchantId);
       return json(services.pix.payCharge(segments[3]));
@@ -593,6 +628,7 @@ export class MerchantCore {
       const claims = this.authenticate(request, true);
       if (segments[3] === 'pay') {
         assertDemo();
+        this.authenticateSimulator(request);
         const row = services.billing.findBoleto(claims.merchantId, segments[2]);
         return json(services.billing.payBoleto(row.id));
       }
@@ -642,6 +678,7 @@ export class MerchantCore {
       const claims = this.authenticate(request, true);
       if (segments[3] === 'pay') {
         assertDemo();
+        this.authenticateSimulator(request);
         const row = services.billing.getLinkRowByCode(segments[2]);
         assertMerchantScope(claims, row.merchant_id);
         return json(services.billing.payLink(segments[2]));
@@ -712,6 +749,7 @@ export class MerchantCore {
       const claims = this.authenticate(request, true);
       if (segments[3] === 'pay') {
         assertDemo();
+        this.authenticateSimulator(request);
         return json(services.subscriptions.payInvoice(claims.merchantId, segments[2]));
       }
       if (segments[3] === 'renew') {
@@ -848,6 +886,7 @@ export class MerchantCore {
       const claims = this.authenticate(request, true);
       if (segments[4] === 'settle') {
         assertDemo();
+        this.authenticateSimulator(request);
         return json(services.openfinance.settleDebit(claims.merchantId, segments[3]));
       }
       if (segments[4] === 'cancel') {
@@ -881,6 +920,7 @@ export class MerchantCore {
       const claims = this.authenticate(request, true);
       if (segments[4] === 'settle') {
         assertDemo();
+        this.authenticateSimulator(request);
         return json({ payment: services.openfinance.settlePayment(claims.merchantId, segments[3]) });
       }
       if (segments[4] === 'cancel') {

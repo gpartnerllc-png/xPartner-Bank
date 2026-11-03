@@ -47,6 +47,8 @@ import { DEMO_MERCHANT_ID, DEMO_TERMINAL_ID } from '../modules/seed.ts';
 import {
   assertMerchantScope,
   authenticateBearer,
+  DEMO_SIMULATE_SCOPE,
+  demoMintScope,
   DeviceAuthenticator,
   issueMerchantToken,
   SlidingWindowLimiter,
@@ -635,6 +637,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     return authenticateBearer(config, request, 'demo:read');
   };
   const requireWrite = (request: FastifyRequest) => authenticateBearer(config, request, 'demo:write');
+  const requireSimulate = (request: FastifyRequest) => authenticateBearer(config, request, DEMO_SIMULATE_SCOPE);
   const assertDemo = (): void => {
     if (!config.demoMode) throw Errors.notFound();
   };
@@ -672,16 +675,18 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/pix/webhook': { post: { summary: 'Webhook do PSP com assinatura HMAC' } },
       '/v1/settlements/{transactionId}/advance': { post: { summary: 'Antecipação preditiva de recebíveis' } },
       '/v1/fiscal/{transactionId}': { get: { summary: 'XML assinado, QR Code e DANFE' } },
-      '/v1/demo/sales': { post: { summary: 'Simulador de venda da maquininha (apenas demo)' } },
+      '/v1/demo/sales': { post: { summary: 'Simulador de venda da maquininha (escopo demo:simulate)' } },
+      '/v1/demo/pix': { post: { summary: 'Cria cobrança Pix pelo simulador (escopo demo:simulate)' } },
+      '/v1/pix/charges/{txid}/simulate-payment': { post: { summary: 'Marca cobrança Pix como paga (escopo demo:simulate)' } },
       '/v1/customers': { get: { summary: 'Lista clientes do estabelecimento' }, post: { summary: 'Cadastra cliente com CPF/CNPJ validado' } },
       '/v1/customers/{id}': { get: { summary: 'Detalha cliente e boletos recentes' }, patch: { summary: 'Atualiza dados cadastrais ou bloqueia o cliente' }, delete: { summary: 'Remove o cliente da base ativa com histórico fiscal preservado' } },
       '/v1/boletos': { get: { summary: 'Lista boletos com status e vencimento' }, post: { summary: 'Emite boleto 077 com linha digitável válida' } },
       '/v1/boletos/{reference}': { get: { summary: 'Consulta boleto por id, nosso número, código de barras ou linha digitável' } },
-      '/v1/boletos/{reference}/pay': { post: { summary: 'Baixa boleto e dispara liquidação e NFC-e (demo)' } },
+      '/v1/boletos/{reference}/pay': { post: { summary: 'Baixa boleto e dispara liquidação e NFC-e (escopo demo:simulate)' } },
       '/v1/boletos/{reference}/cancel': { post: { summary: 'Cancela boleto ainda não pago' } },
       '/v1/payment-links': { get: { summary: 'Lista links de pagamento' }, post: { summary: 'Cria link Pix ou boleto com checkout público' } },
       '/v1/payment-links/{code}': { get: { summary: 'Detalha link de pagamento' } },
-      '/v1/payment-links/{code}/pay': { post: { summary: 'Liquida link em ambiente demo' } },
+      '/v1/payment-links/{code}/pay': { post: { summary: 'Liquida link em ambiente demo (escopo demo:simulate)' } },
       '/v1/payment-links/{code}/cancel': { post: { summary: 'Cancela link ativo' } },
       '/v1/public/links/{code}': { get: { summary: 'Checkout público do link (sem autenticação)' } },
       '/v1/public/links/{code}/pay': { post: { summary: 'Simula pagamento do link (apenas demo)' } },
@@ -692,7 +697,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/subscriptions/{id}/cancel': { post: { summary: 'Cancela assinatura' } },
       '/v1/subscription-invoices': { get: { summary: 'Lista faturas de assinatura' } },
       '/v1/subscription-invoices/{id}': { get: { summary: 'Detalha fatura com Pix ou boleto' } },
-      '/v1/subscription-invoices/{id}/pay': { post: { summary: 'Baixa fatura de assinatura (demo)' } },
+      '/v1/subscription-invoices/{id}/pay': { post: { summary: 'Baixa fatura de assinatura (escopo demo:simulate)' } },
       '/v1/subscription-invoices/{id}/renew': { post: { summary: 'Gera nova cobrança Pix para fatura vencida' } },
       '/v1/statement': { get: { summary: 'Extrato do lojista com saldo e movimentações' } },
       '/v1/statement.csv': { get: { summary: 'Exporta extrato em CSV' } },
@@ -704,10 +709,10 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       '/v1/open-finance/consents/{id}/reject': { post: { summary: 'Recusa consentimento pendente' } },
       '/v1/open-finance/consents/{id}/revoke': { post: { summary: 'Revoga consentimento e encerra a conta vinculada' } },
       '/v1/open-finance/debits': { post: { summary: 'Agenda débito externo em conta vinculada' } },
-      '/v1/open-finance/debits/{id}/settle': { post: { summary: 'Liquida débito externo com NFC-e e recebível (demo)' } },
+      '/v1/open-finance/debits/{id}/settle': { post: { summary: 'Liquida débito externo com NFC-e e recebível (escopo demo:simulate)' } },
       '/v1/open-finance/debits/{id}/cancel': { post: { summary: 'Cancela débito externo agendado' } },
       '/v1/open-finance/payments': { post: { summary: 'Inicia pagamento Pix via consentimento de iniciação' } },
-      '/v1/open-finance/payments/{id}/settle': { post: { summary: 'Liquida pagamento iniciado com tarifa e lançamento contábil (demo)' } },
+      '/v1/open-finance/payments/{id}/settle': { post: { summary: 'Liquida pagamento iniciado com tarifa e lançamento contábil (escopo demo:simulate)' } },
       '/v1/open-finance/payments/{id}/cancel': { post: { summary: 'Cancela pagamento pendente' } },
       '/v1/investments/overview': { get: { summary: 'KPIs de posições, aportes e proventos' } },
       '/v1/investments/products': { get: { summary: 'Lista produtos de investimento disponíveis' } },
@@ -847,8 +852,15 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     const merchantId = body.merchantId ?? DEMO_MERCHANT_ID;
     const merchant = publicMerchant(db, merchantId);
     if (!merchant) throw Errors.notFound('Estabelecimento não encontrado.');
-    const token = issueMerchantToken(config, merchantId);
-    return { token, tokenType: 'Bearer', expiresIn: config.tokenTtlSeconds, merchant };
+    const token = issueMerchantToken(config, merchantId, demoMintScope(config));
+    return {
+      token,
+      tokenType: 'Bearer',
+      expiresIn: config.tokenTtlSeconds,
+      scopes: demoMintScope(config),
+      canSimulate: !config.isProduction,
+      merchant,
+    };
   });
 
   app.get('/v1/demo/bootstrap', async (request) => {
@@ -858,11 +870,13 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     const terminals = db
       .prepare('SELECT id, serial, model, status FROM terminals WHERE merchant_id = ?')
       .all(DEMO_MERCHANT_ID);
-    const token = issueMerchantToken(config, DEMO_MERCHANT_ID);
+    const token = issueMerchantToken(config, DEMO_MERCHANT_ID, demoMintScope(config));
     return {
       token,
       tokenType: 'Bearer',
       expiresIn: config.tokenTtlSeconds,
+      scopes: demoMintScope(config),
+      canSimulate: !config.isProduction,
       merchant,
       terminals,
       acquirers: listAcquirers(db).map((acquirer) => ({
@@ -886,7 +900,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/demo/sales', { schema: { body: demoSaleSchema } }, async (request) => {
     assertDemo();
-    requireWrite(request);
+    requireSimulate(request);
     const body = request.body as {
       amountCents: number;
       method: 'CREDIT' | 'DEBIT' | 'PIX' | 'VOUCHER';
@@ -916,7 +930,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/demo/pix', async (request) => {
     assertDemo();
-    requireWrite(request);
+    requireSimulate(request);
     const body = request.body as { amountCents?: number; description?: string };
     if (!body.amountCents) throw Errors.validation('amountCents é obrigatório.');
     return ctx.pix.createCharge({
@@ -1064,7 +1078,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/pix/charges/:txid/simulate-payment', async (request) => {
     assertDemo();
-    const claims = requireWrite(request);
+    const claims = requireSimulate(request);
     const { txid } = request.params as { txid: string };
     const current = ctx.pix.getCharge(txid);
     assertMerchantScope(claims, current.transaction.merchantId);
@@ -1174,7 +1188,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/boletos/:reference/pay', async (request) => {
     assertDemo();
-    const claims = requireWrite(request);
+    const claims = requireSimulate(request);
     const { reference } = request.params as { reference: string };
     const row = ctx.billing.findBoleto(claims.merchantId, reference);
     const result = ctx.billing.payBoleto(row.id);
@@ -1229,7 +1243,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/payment-links/:code/pay', async (request) => {
     assertDemo();
-    const claims = requireWrite(request);
+    const claims = requireSimulate(request);
     const { code } = request.params as { code: string };
     const row = ctx.billing.getLinkRowByCode(code);
     assertMerchantScope(claims, row.merchant_id);
@@ -1315,7 +1329,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/subscription-invoices/:id/pay', async (request) => {
     assertDemo();
-    const claims = requireWrite(request);
+    const claims = requireSimulate(request);
     const { id } = request.params as { id: string };
     const result = ctx.subscriptions.payInvoice(claims.merchantId, id);
     metrics.inc('subscription_invoices_paid_total');
@@ -1438,7 +1452,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/open-finance/debits/:id/settle', async (request) => {
     assertDemo();
-    const claims = requireWrite(request);
+    const claims = requireSimulate(request);
     const { id } = request.params as { id: string };
     const result = ctx.openfinance.settleDebit(claims.merchantId, id);
     metrics.inc('open_finance_debits_settled_total');
@@ -1461,7 +1475,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   app.post('/v1/open-finance/payments/:id/settle', async (request) => {
     assertDemo();
-    const claims = requireWrite(request);
+    const claims = requireSimulate(request);
     const { id } = request.params as { id: string };
     const payment = ctx.openfinance.settlePayment(claims.merchantId, id);
     metrics.inc('open_finance_payments_settled_total');

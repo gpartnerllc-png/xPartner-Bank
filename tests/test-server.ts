@@ -22,7 +22,7 @@ import { BankPdvService } from '../src/modules/bank-pdv.ts';
 import { RsfnService, ensureRsfnTransit } from '../src/modules/rsfn.ts';
 import { DEMO_MERCHANT_ID } from '../src/modules/seed.ts';
 import { buildApp } from '../src/api/server.ts';
-import { DeviceAuthenticator, SlidingWindowLimiter, issueMerchantToken } from '../src/api/security.ts';
+import { DeviceAuthenticator, demoMintScope, SlidingWindowLimiter, issueMerchantToken } from '../src/api/security.ts';
 import { testConfig, testDb } from './helpers.ts';
 
 export async function buildTestServer() {
@@ -85,7 +85,7 @@ export async function buildTestServer() {
     limiter: new SlidingWindowLimiter(1000),
   });
   fiscal.start(bus);
-  const token = issueMerchantToken(config, DEMO_MERCHANT_ID);
+  const token = issueMerchantToken(config, DEMO_MERCHANT_ID, demoMintScope(config));
   return {
     config,
     db,

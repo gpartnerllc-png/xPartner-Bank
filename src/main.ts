@@ -34,7 +34,7 @@ import { seedOpenFinance } from './modules/openfinance-seed.ts';
 import { seedInvestments } from './modules/investments-seed.ts';
 import { buildApp } from './api/server.ts';
 import { buildMtlsApp } from './api/mtls.ts';
-import { DeviceAuthenticator, SlidingWindowLimiter, issueMerchantToken } from './api/security.ts';
+import { DeviceAuthenticator, demoMintScope, SlidingWindowLimiter, issueMerchantToken } from './api/security.ts';
 
 const config = loadConfig();
 const db = openDb(config.dbPath);
@@ -171,7 +171,7 @@ const banner = [
 console.log(banner);
 
 if (config.demoMode) {
-  const token = issueMerchantToken(config, DEMO_MERCHANT_ID);
+  const token = issueMerchantToken(config, DEMO_MERCHANT_ID, demoMintScope(config));
   console.log(`  Token de demonstração (expira em ${config.tokenTtlSeconds}s):`);
   console.log(`  ${token.slice(0, 24)}…`);
   console.log('');

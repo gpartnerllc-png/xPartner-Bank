@@ -25,6 +25,18 @@ export function tokenSecret(config: AppConfig): string {
   return deriveSecret(config.masterKey, 'token');
 }
 
+/**
+ * Escopo que fabrica lançamento: venda simulada, pagamento de boleto, cobrança
+ * Pix liquidada, liquidação de Open Finance. Quem só abre o painel recebe
+ * leitura e escrita de cadastro; operar a maquininha exige mais. Em produção o
+ * mint público nunca entrega este escopo.
+ */
+export const DEMO_SIMULATE_SCOPE = 'demo:simulate';
+
+export function demoMintScope(config: AppConfig): string {
+  return config.isProduction ? 'demo:read demo:write' : `demo:read demo:write ${DEMO_SIMULATE_SCOPE}`;
+}
+
 export function providerSecret(config: AppConfig): string {
   return deriveSecret(config.masterKey, 'pix-webhook');
 }

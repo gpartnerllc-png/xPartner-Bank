@@ -580,6 +580,7 @@
             <input id="saleAmount" class="amount-input" inputmode="decimal" value="129,00" aria-label="Valor da venda" />
           </div>
           <div class="amount-hint" id="saleHint">Escolha um produto ou digite o valor</div>
+          <div class="amount-hint" id="simNote" hidden></div>
           <div class="quick" id="quickProducts"></div>
           <div class="tabs">
             <button data-method="CREDIT" class="active">Crédito</button>
@@ -723,7 +724,44 @@
   const money = (cents) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100);
   const digits = (v) => String(v || '').replace(/\D/g, '');
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const state = { token: '', merchant: null, terminals: [], methods: 'CREDIT', lastSale: null, ws: null, retry: 0, reloadTimer: null, pix: null };
+  const state = { token: '', merchant: null, terminals: [], methods: 'CREDIT', lastSale: null, ws: null, retry: 0, reloadTimer: null, pix: null, canSimulate: true };
+
+  /**
+   * O token público apenas mostra o painel. Para operar a maquininha é preciso
+   * a sessão de administrador do banco, e o token de operador vem dela.
+   */
+  async function tryOperatorToken() {
+    try {
+      const me = await fetch('/v1/bank/me', { credentials: 'same-origin' }).then((res) => (res.ok ? res.json() : null));
+      if (!me || !me.user || me.user.role !== 'ADMIN') return null;
+      const granted = await fetch('/v1/bank/admin/merchant/simulator-token', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', 'x-bank-csrf': me.csrfToken || '' },
+      }).then((res) => (res.ok ? res.json() : null));
+      return granted && granted.token ? granted : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function lockSimulator() {
+    $('saleBtn').disabled = !state.canSimulate;
+    $('pixCreateBtn').disabled = !state.canSimulate;
+    const note = $('simNote');
+    note.hidden = state.canSimulate;
+    if (!state.canSimulate) {
+      note.textContent = 'A rede pública só grava lançamento de verdade. Entre no banco como administrador para operar a maquininha nesta página.';
+    }
+  }
+
+  function isMissingOperatorScope(error) {
+    if (!/demo:simulate/.test(String((error && error.message) || ''))) return false;
+    state.canSimulate = false;
+    lockSimulator();
+    toast('Sessão sem token de operador', 'warn', 'Entre no banco como administrador para lançar venda.');
+    return true;
+  }
 
   async function api(path, options = {}) {
     const res = await fetch(path, {
@@ -1018,9 +1056,10 @@
       else toast('Venda recusada', 'err', result.transaction.failureReason || 'Recusada pelo emissor');
       scheduleReload();
     } catch (e) {
+      if (isMissingOperatorScope(e)) return;
       toast('Falha na autorização', 'err', e.message);
     } finally {
-      button.disabled = false;
+      button.disabled = !state.canSimulate;
       button.textContent = 'Autorizar e emitir NFC-e';
     }
   }
@@ -1077,8 +1116,9 @@
       toast('BR Code gerado', 'ok', 'CRC16 validado · txid ' + result.charge.txid.slice(0, 8));
       scheduleReload();
     } catch (e) {
+      if (isMissingOperatorScope(e)) return;
       toast('Falha ao criar cobrança', 'err', e.message);
-    } finally { btn.disabled = false; }
+    } finally { btn.disabled = !state.canSimulate; }
   }
 
   async function payPix() {
@@ -1195,6 +1235,15 @@
     try {
       const info = await api('/v1/demo/bootstrap');
       state.token = info.token;
+      state.canSimulate = info.canSimulate !== false;
+      if (!state.canSimulate) {
+        const operator = await tryOperatorToken();
+        if (operator) {
+          state.token = operator.token;
+          state.canSimulate = true;
+        }
+      }
+      lockSimulator();
       state.merchant = info.merchant;
       state.terminals = info.terminals;
       $('terminalLabel').textContent = info.terminalId + ' · ' + (info.terminals[0]?.model || 'Tap to Pay');

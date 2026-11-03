@@ -20,10 +20,13 @@ const READ_USER_VERSION = /^\s*PRAGMA\s+user_version\s*;?\s*$/i;
 const WRITE_USER_VERSION = /^\s*PRAGMA\s+user_version\s*=\s*(\d+)\s*;?\s*$/i;
 
 class DoStatement implements DbStatement {
-  constructor(
-    private readonly sql: string,
-    private readonly storage: SqlStorageLike,
-  ) {}
+  private readonly sql: string;
+  private readonly storage: SqlStorageLike;
+
+  constructor(sql: string, storage: SqlStorageLike) {
+    this.sql = sql;
+    this.storage = storage;
+  }
 
   run(...params: any[]) {
     const cursor = this.storage.exec(this.sql, ...params.map(bind));
@@ -49,9 +52,11 @@ class DoStatement implements DbStatement {
 const TRANSACTION_STATEMENT = /^\s*(BEGIN|COMMIT|END|ROLLBACK|SAVEPOINT|RELEASE)\b/i;
 
 export class DoDb implements Db {
+  private readonly storage: SqlStorageLike;
   private userVersion: number;
 
-  constructor(private readonly storage: SqlStorageLike) {
+  constructor(storage: SqlStorageLike) {
+    this.storage = storage;
     this.userVersion = this.readUserVersion();
   }
 

@@ -73,6 +73,7 @@ import {
   purgeMerchantDemoData,
 } from './demo-purge.ts';
 import { MerchantCore } from './merchant/core.ts';
+import { issueMerchantSimulatorToken } from './merchant-session.ts';
 
 const VERSION = '1.2.0-edge';
 
@@ -600,6 +601,13 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
     const merchant = await purgeMerchantDemoData(env, admin.user.id, confirm);
     const bank = await purgeEdgeDemoData(env, admin.user.id, confirm);
     return json(env, request, { bank, merchant });
+  }
+
+  // Token curto para operar a maquininha. Só um administrador autenticado pede,
+  // e o Durable Object recusa o token público de bootstrap nesse caminho.
+  if (path === '/v1/bank/admin/merchant/simulator-token' && method === 'POST') {
+    const admin = requireAdmin(await authenticate(env, request));
+    return json(env, request, await issueMerchantSimulatorToken(env, admin.user.id));
   }
 
   if (path === '/v1/bank/admin/rsfn/messages' && method === 'GET') {
