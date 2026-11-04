@@ -1469,6 +1469,14 @@
     }
   }
 
+  // A barra de navegação do banco chega aqui pelo endereço (#pix, #credit…),
+  // então a tela precisa trocar quando o endereço muda sem recarregar.
+  window.addEventListener('hashchange', () => {
+    const alvo = location.hash.replace('#', '');
+    if (!alvo || !titles[alvo] || $('#app-view').hidden) return;
+    setView(alvo, { push: false });
+  });
+
   // ── Autenticação ───────────────────────────────────────────────────
   function setAuthTab(tab) {
     $$('.auth-tabs button').forEach((button) => button.classList.toggle('active', button.dataset.authTab === tab));
@@ -3339,5 +3347,6 @@
   start();
 })();
 </script>
+<script src="/shell.js" defer></script>
 </body>
 </html>

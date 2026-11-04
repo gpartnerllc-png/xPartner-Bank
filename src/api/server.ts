@@ -2318,6 +2318,8 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   let bankHtml: string | undefined;
   let coreHtml: string | undefined;
   let checkoutHtml: string | undefined;
+  let shellJs: string | undefined;
+  let shellCss: string | undefined;
   const swaggerAssets = new Map<string, string>();
   app.get('/', async (request, reply) => {
     if (!config.demoMode) {
@@ -2359,6 +2361,20 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
       docsHtml = readFileSync(new URL('../../public/docs.html', import.meta.url), 'utf8');
     }
     reply.type('text/html; charset=utf-8').send(docsHtml);
+  });
+
+  app.get('/shell.js', async (request, reply) => {
+    if (!shellJs) {
+      shellJs = readFileSync(new URL('../../public/shell.js', import.meta.url), 'utf8');
+    }
+    reply.type('application/javascript; charset=utf-8').send(shellJs);
+  });
+
+  app.get('/shell.css', async (request, reply) => {
+    if (!shellCss) {
+      shellCss = readFileSync(new URL('../../public/shell.css', import.meta.url), 'utf8');
+    }
+    reply.type('text/css; charset=utf-8').send(shellCss);
   });
 
   app.get('/vendor/swagger/:file', async (request, reply) => {

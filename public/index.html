@@ -562,6 +562,36 @@
     </div>
 
     <div class="stack">
+      <article class="card" id="acesso">
+        <div class="sale-head">
+          <div>
+            <h3>Acesso ao banco</h3>
+            <small>Entra aqui, sai daqui e vai a qualquer área sem perder o fio.</small>
+          </div>
+          <span class="tag" id="acessoSelo">sem entrar</span>
+        </div>
+        <form id="acessoForm">
+          <div class="field" style="margin-bottom:10px">
+            <label for="acessoId">E-mail ou CPF/CNPJ</label>
+            <input id="acessoId" autocomplete="username" placeholder="voce@email.com ou 000.000.000-00" required />
+          </div>
+          <div class="field" style="margin-bottom:12px">
+            <label for="acessoSenha">Senha</label>
+            <input id="acessoSenha" type="password" autocomplete="current-password" placeholder="Sua senha" required />
+          </div>
+          <button class="btn" id="acessoEntrar" type="submit">Entrar no banco</button>
+          <div class="amount-hint" style="margin:10px 0 0">A senha viaja só nesta conexão e nunca fica salva nesta página. Contas novas são liberadas pelo administrador.</div>
+        </form>
+        <div id="acessoDentro" hidden>
+          <div class="emv-label"><span>Quem entrou</span><span class="tag" id="acessoPapel">—</span></div>
+          <b id="acessoNome" style="font-size:13px">—</b>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <a class="btn small" href="/bank">Voltar ao banco</a>
+            <button class="btn small" type="button" id="acessoSair">Sair</button>
+          </div>
+        </div>
+      </article>
+
       <article class="card sale-panel" id="taptopay">
         <div class="sale-head">
           <div>
@@ -724,16 +754,38 @@
   const money = (cents) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100);
   const digits = (v) => String(v || '').replace(/\D/g, '');
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const state = { token: '', merchant: null, terminals: [], methods: 'CREDIT', lastSale: null, ws: null, retry: 0, reloadTimer: null, pix: null, canSimulate: true };
+  const state = { token: '', csrf: '', merchant: null, terminals: [], methods: 'CREDIT', lastSale: null, ws: null, retry: 0, reloadTimer: null, pix: null, canSimulate: true };
 
   /**
    * O token público apenas mostra o painel. Para operar a maquininha é preciso
    * a sessão de administrador do banco, e o token de operador vem dela.
    */
-  async function tryOperatorToken() {
+  async function bankSession(forcar) {
+    if (window.xpSessaoBanco) return window.xpSessaoBanco.conferir(forcar);
     try {
-      const me = await fetch('/v1/bank/me', { credentials: 'same-origin' }).then((res) => (res.ok ? res.json() : null));
-      if (!me || !me.user || me.user.role !== 'ADMIN') return null;
+      const res = await fetch('/v1/bank/me', { credentials: 'same-origin' });
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function pintaAcesso(me) {
+    const dentro = !!(me && me.user);
+    state.csrf = dentro ? me.csrfToken || '' : '';
+    $('acessoForm').hidden = dentro;
+    $('acessoDentro').hidden = !dentro;
+    $('acessoSelo').textContent = dentro ? (me.user.role === 'ADMIN' ? 'administrador' : 'cliente') : 'sem entrar';
+    if (!dentro) return;
+    $('acessoNome').textContent = me.user.name || me.user.email || 'Cliente';
+    $('acessoPapel').textContent = me.user.role === 'ADMIN' ? 'Administrador' : 'Cliente do banco';
+  }
+
+  async function tryOperatorToken() {
+    const me = await bankSession();
+    pintaAcesso(me);
+    if (!me || !me.user || me.user.role !== 'ADMIN') return null;
+    try {
       const granted = await fetch('/v1/bank/admin/merchant/simulator-token', {
         method: 'POST',
         credentials: 'same-origin',
@@ -743,6 +795,36 @@
     } catch {
       return null;
     }
+  }
+
+  async function entrarNoBanco(identifier, senha) {
+    const res = await fetch('/v1/bank/auth/login', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ identifier, password: senha }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((body && body.error && body.error.message) || 'Não foi possível entrar.');
+    return body;
+  }
+
+  async function sairDoBanco() {
+    try {
+      await fetch('/v1/bank/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', 'x-bank-csrf': state.csrf },
+        body: '{}',
+      });
+    } catch { /* a sessão já tinha vencido */ }
+    state.csrf = '';
+    await bankSession(true);
+    state.token = (await api('/v1/demo/bootstrap')).token;
+    state.canSimulate = false;
+    lockSimulator();
+    pintaAcesso(null);
+    await Promise.all([loadOverview(), loadFiscal(), loadLedger()]);
   }
 
   function lockSimulator() {
@@ -1236,12 +1318,10 @@
       const info = await api('/v1/demo/bootstrap');
       state.token = info.token;
       state.canSimulate = info.canSimulate !== false;
-      if (!state.canSimulate) {
-        const operator = await tryOperatorToken();
-        if (operator) {
-          state.token = operator.token;
-          state.canSimulate = true;
-        }
+      const operator = await tryOperatorToken();
+      if (operator) {
+        state.token = operator.token;
+        state.canSimulate = true;
       }
       lockSimulator();
       state.merchant = info.merchant;
@@ -1266,6 +1346,36 @@
     document.querySelectorAll('.nav a').forEach((x) => x.classList.remove('active'));
     a.classList.add('active');
   }));
+  $('acessoForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const identifier = $('acessoId').value.trim();
+    const senha = $('acessoSenha').value;
+    const botao = $('acessoEntrar');
+    if (!identifier || !senha) { toast('Falta seu e-mail e sua senha', 'warn'); return; }
+    botao.disabled = true;
+    try {
+      await entrarNoBanco(identifier, senha);
+      $('acessoSenha').value = '';
+      await bankSession(true);
+      const operator = await tryOperatorToken();
+      if (operator) {
+        state.token = operator.token;
+        state.canSimulate = true;
+      }
+      lockSimulator();
+      toast('Bem-vindo de volta', 'ok', operator ? 'Maquininha liberada para lançar venda.' : 'Seu acesso está ativo.');
+      await Promise.all([loadOverview(), loadFiscal(), loadLedger()]);
+    } catch (error) {
+      pintaAcesso(null);
+      toast('Não foi possível entrar', 'err', error.message);
+    } finally {
+      botao.disabled = false;
+    }
+  });
+  $('acessoSair').addEventListener('click', async () => {
+    await sairDoBanco();
+    toast('Você saiu do banco', 'ok', 'A maquininha volta a aceitar só lançamento de verdade.');
+  });
   document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.tabs button').forEach((x) => x.classList.remove('active'));
     b.classList.add('active');
@@ -1310,5 +1420,6 @@ window.addEventListener('DOMContentLoaded', () => {
   setTimeout(xpFlashTarget, 1400);
 });
 </script>
+<script src="/shell.js" defer></script>
 </body>
 </html>
