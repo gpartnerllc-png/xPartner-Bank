@@ -217,12 +217,13 @@
   }
 
   var sessao = null;
+  var conferida = false;
   var emBusca = null;
   var barras = [];
 
   /** Uma conferência por vez: a barra e o cartão de acesso da página dividem o mesmo pedido. */
   function conferirSessao(forcar) {
-    if (!forcar && sessao !== null && !emBusca) return Promise.resolve(sessao);
+    if (!forcar && conferida && !emBusca) return Promise.resolve(sessao);
     if (forcar) emBusca = null;
     if (!emBusca) {
       emBusca = fetch('/v1/bank/me', { credentials: 'same-origin' })
@@ -231,6 +232,7 @@
         .then(function (me) {
           emBusca = null;
           sessao = me;
+          conferida = true;
           for (var i = 0; i < barras.length; i++) pintaSessao(barras[i], me);
           return me;
         });
